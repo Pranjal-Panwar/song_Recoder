@@ -11,50 +11,51 @@
 <style>
 /* ── two moods: morning riyaz (default) and evening lamp ── */
 :root{
-  --bg:#FFF4EC; --bg2:#FFE9DC; --card:#FFFFFF; --card2:#FFFBF7;
-  --ink:#40243A; --muted:#966C82; --line:#F7DACC;
-  --accent:#D6336C; --accent-soft:#FDE6EF; --accent-ink:#FFFFFF;
-  --gold:#F2A03D; --gold-soft:#FFF1DC; --leaf:#2E9C6B; --live:#E5484D;
-  --stage:linear-gradient(180deg,#FFFDFB,#FFF3E9);
-  --fade1:rgba(255,247,240,.30); --fade2:rgba(255,244,236,.94);
-  --beam:rgba(242,160,61,.18);
-  --lit:#40243A; --litglow:0 2px 22px rgba(242,160,61,.55);
-  --shadow:0 10px 28px rgba(214,51,108,.10);
-  --shadow-lift:0 16px 36px rgba(214,51,108,.16);
-  --veil:rgba(64,36,58,.42); --wash:rgba(255,244,236,.93);
-  --ambient:radial-gradient(52vw 42vh at 78% -6%, rgba(242,160,61,.30), transparent 66%),
-            radial-gradient(46vw 40vh at 12% 2%, rgba(214,51,108,.16), transparent 62%);
+  --bg:#FBEFE8; --bg2:#F6E4DA; --card:#FFFBF7; --card2:#F8EEE7;
+  --ink:#4A3038; --muted:#9C7D89; --line:#EFDCD2;
+  --accent:#C25E7A; --accent-soft:#FAE7EC; --accent-ink:#FFFFFF;
+  --gold:#E0A055; --gold-soft:#FBEEDC; --leaf:#7A9A72; --live:#D9695F;
+  --stage:linear-gradient(180deg,#FFFCF9,#FAF0E8);
+  --fade1:rgba(252,245,239,.28); --fade2:rgba(251,239,232,.95);
+  --beam:rgba(224,160,85,.16);
+  --lit:#4A3038; --litglow:0 2px 26px rgba(224,160,85,.5);
+  --shadow:0 6px 22px rgba(120,80,70,.07); --shadow-lift:0 14px 34px rgba(120,80,70,.13);
+  --veil:rgba(74,48,56,.38); --wash:rgba(251,239,232,.94);
+  --ambient:radial-gradient(56vw 44vh at 80% -8%, rgba(224,160,85,.26), transparent 68%),
+            radial-gradient(48vw 42vh at 8% 0%, rgba(194,94,122,.13), transparent 64%);
   --display:"Fraunces","Iowan Old Style",Georgia,serif;
   --body:"Karla",-apple-system,"Segoe UI",system-ui,sans-serif;
   --deva:"Tiro Devanagari Hindi","Noto Serif Devanagari","Nirmala UI",serif;
 }
 body[data-theme=evening]{
-  --bg:#1A1726; --bg2:#232032; --card:#232032; --card2:#2C2840;
-  --ink:#F4EFE6; --muted:#A093B0; --line:#3A3550;
-  --accent:#F2B544; --accent-soft:#2C2840; --accent-ink:#241B06;
-  --gold:#F2B544; --gold-soft:#2C2840; --leaf:#7BD3A0; --live:#F0645E;
-  --stage:linear-gradient(180deg,#232032,#232032);
-  --fade1:rgba(26,23,38,.55); --fade2:rgba(26,23,38,.92);
-  --beam:rgba(242,181,68,.10);
-  --lit:#FFF8EA; --litglow:0 0 26px rgba(242,181,68,.45);
-  --shadow:0 10px 28px rgba(0,0,0,.35); --shadow-lift:0 16px 36px rgba(0,0,0,.45);
-  --veil:rgba(12,10,20,.78); --wash:rgba(12,10,20,.88);
-  --ambient:radial-gradient(58vw 48vh at 50% 34%, rgba(242,181,68,.13), transparent 72%);
+  --bg:#241C21; --bg2:#2C222A; --card:#2E252C; --card2:#392E36;
+  --ink:#F5E9E2; --muted:#B29AA5; --line:#463A43;
+  --accent:#E8B06B; --accent-soft:#392E36; --accent-ink:#2A1E12;
+  --gold:#E8B06B; --gold-soft:#392E36; --leaf:#8FB588; --live:#E0796E;
+  --stage:linear-gradient(180deg,#2E252C,#2E252C);
+  --fade1:rgba(36,28,33,.52); --fade2:rgba(36,28,33,.93);
+  --beam:rgba(232,176,107,.11);
+  --lit:#FFF4E6; --litglow:0 0 30px rgba(232,176,107,.42);
+  --shadow:0 6px 22px rgba(0,0,0,.28); --shadow-lift:0 14px 34px rgba(0,0,0,.4);
+  --veil:rgba(18,13,16,.76); --wash:rgba(18,13,16,.9);
+  --ambient:radial-gradient(60vw 50vh at 50% 30%, rgba(232,176,107,.12), transparent 74%);
 }
 *{box-sizing:border-box;margin:0;padding:0}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.04;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 html,body{height:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16.5px;line-height:1.68;
   -webkit-font-smoothing:antialiased;overflow-x:hidden;transition:background .4s,color .4s}
 button,input,textarea,select{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:none}
 a{color:var(--accent)}
 .room-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background:var(--ambient);
-  animation:breathe 11s ease-in-out infinite;transition:background .4s}
-@keyframes breathe{0%,100%{opacity:.9}50%{opacity:1}}
-.shell{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 20px 96px}
+  animation:breathe 14s ease-in-out infinite;transition:background .4s}
+@keyframes breathe{0%,100%{opacity:.86}50%{opacity:1}}
+.shell{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:0 22px 110px}
 
 /* header */
-.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px 0 18px;flex-wrap:wrap}
+.top{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:28px 0 22px;flex-wrap:wrap}
 .mark{display:flex;align-items:center;gap:12px}
 .mark-dot{width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:15px;
   background:var(--gold-soft);border:1px solid var(--line);box-shadow:var(--shadow)}
@@ -72,8 +73,8 @@ a{color:var(--accent)}
 .theme-btn:hover{transform:rotate(18deg) scale(1.06);border-color:var(--gold)}
 
 /* bits */
-.panel{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:var(--shadow)}
-.field{width:100%;background:var(--card2);border:1.5px solid var(--line);border-radius:14px;padding:11px 15px;
+.panel{background:var(--card);border:1px solid var(--line);border-radius:26px;padding:24px;box-shadow:var(--shadow)}
+.field{width:100%;background:var(--card2);border:1.5px solid var(--line);border-radius:16px;padding:12px 16px;
   color:var(--ink);outline:none;transition:border-color .18s,box-shadow .18s}
 .field:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
 .field::placeholder{color:var(--muted);opacity:.75}
@@ -96,14 +97,14 @@ textarea.field{min-height:180px;resize:vertical;line-height:1.7;font-size:15px}
 .tag-sync{color:var(--accent);background:var(--accent-soft);border-color:transparent}
 
 /* हौसला */
-.hausla{display:flex;align-items:flex-start;gap:15px;margin:2px 0 24px;padding:20px 24px;border-radius:22px;
+.hausla{display:flex;align-items:flex-start;gap:15px;margin:2px 0 24px;padding:22px 26px;border-radius:26px;
   border:1px solid var(--line);background:var(--card);box-shadow:var(--shadow);position:relative;overflow:hidden}
 .hausla::before{content:"";position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(110deg,var(--gold-soft),transparent 55%,var(--accent-soft))}
 .hausla-mark{position:relative;color:var(--gold);font-size:17px;line-height:1.7;flex:none}
 .hausla-body{flex:1;min-width:0;position:relative;transition:opacity .3s,transform .3s}
 .hausla-body.is-fading{opacity:0;transform:translateY(-5px)}
-.hausla-q{font-family:var(--deva);font-size:19px;line-height:1.9;color:var(--ink)}
+.hausla-q{font-family:var(--deva);font-size:19px;line-height:2;color:var(--ink)}
 .hausla-a{font-family:var(--deva);font-size:13.5px;color:var(--muted);margin-top:8px}
 .hausla-new{position:relative;flex:none;color:var(--muted);font-size:18px;padding:3px 7px;border-radius:10px;transition:.25s}
 .hausla-new:hover{color:var(--accent);background:var(--accent-soft)}
@@ -113,10 +114,10 @@ textarea.field{min-height:180px;resize:vertical;line-height:1.7;font-size:15px}
 .search-wrap{position:relative;flex:1;min-width:210px}
 .search-wrap .field{padding-left:42px}
 .search-ico{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px}
-.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(238px,1fr));gap:16px;margin-top:22px}
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(238px,1fr));gap:18px;margin-top:26px}
 .card{position:relative;text-align:left;width:100%;background:var(--card);border:1px solid var(--line);
-  border-radius:20px;transition:.2s;overflow:hidden;box-shadow:var(--shadow)}
-.card-open{display:block;width:100%;text-align:left;padding:20px;border-radius:20px}
+  border-radius:26px;transition:.26s cubic-bezier(.2,.8,.3,1);overflow:hidden;box-shadow:var(--shadow)}
+.card-open{display:block;width:100%;text-align:left;padding:22px;border-radius:26px}
 .card-acts{position:absolute;top:15px;right:14px;z-index:2;display:flex;gap:5px}
 .icon-btn{width:31px;height:31px;border-radius:50%;display:grid;place-items:center;font-size:13px;line-height:1;
   color:var(--muted);background:var(--card2);border:1px solid var(--line);opacity:.85;transition:.16s}
@@ -126,7 +127,7 @@ textarea.field{min-height:180px;resize:vertical;line-height:1.7;font-size:15px}
 .card[data-tint="1"]::before{background:var(--accent)}
 .card[data-tint="2"]::before{background:var(--leaf)}
 .card[data-tint="3"]::before{background:#7C6BD6}
-.card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lift);border-color:var(--accent)}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lift);border-color:var(--accent)}
 .card-title{font-family:var(--display);font-size:19px;font-weight:500;line-height:1.25;margin:6px 0 4px;padding-right:64px}
 .card-artist{font-size:13px;color:var(--muted)}
 .card-meta{margin-top:15px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
@@ -142,7 +143,7 @@ textarea.field{min-height:180px;resize:vertical;line-height:1.7;font-size:15px}
 .stage-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding:6px 0 16px;flex-wrap:wrap}
 .stage-title{font-family:var(--display);font-size:clamp(26px,4.4vw,40px);font-weight:500;line-height:1.1}
 .stage-artist{color:var(--muted);font-size:14px;margin-top:4px}
-.lamp-stage{position:relative;border-radius:26px;background:var(--stage);border:1px solid var(--line);
+.lamp-stage{position:relative;border-radius:30px;background:var(--stage);border:1px solid var(--line);
   overflow:hidden;box-shadow:var(--shadow)}
 .lamp-glow{position:absolute;inset:0;pointer-events:none;z-index:2;
   background:radial-gradient(74% 40% at 50% 50%, transparent 0%, transparent 26%, var(--fade1) 60%, var(--fade2) 100%)}
@@ -190,8 +191,8 @@ kbd{background:var(--card2);border:1px solid var(--line);border-radius:6px;paddi
 .switch input:checked::after{transform:translateX(18px)}
 
 /* takes + drive */
-.take{display:flex;align-items:center;gap:14px;padding:15px 17px;border:1px solid var(--line);border-radius:18px;
-  background:var(--card);margin-bottom:11px;flex-wrap:wrap;box-shadow:var(--shadow);transition:.18s}
+.take{display:flex;align-items:center;gap:14px;padding:15px 17px;border:1px solid var(--line);border-radius:22px;
+  background:var(--card);margin-bottom:12px;flex-wrap:wrap;box-shadow:var(--shadow);transition:.18s}
 .take:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift)}
 .take-play{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;
   flex:none;color:var(--accent);font-size:13px;transition:.18s}
@@ -203,29 +204,35 @@ kbd{background:var(--card2);border:1px solid var(--line);border-radius:6px;paddi
 
 /* overlays */
 .veil{position:fixed;inset:0;background:var(--veil);z-index:50;display:grid;place-items:center;padding:20px;backdrop-filter:blur(4px)}
-.sheet{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:28px;width:100%;
+.sheet{background:var(--card);border:1px solid var(--line);border-radius:28px;padding:30px;width:100%;
   max-width:660px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(64,36,58,.28)}
 .sheet h2{font-family:var(--display);font-size:27px;font-weight:500;margin-bottom:4px}
 .sheet .sub{color:var(--muted);font-size:13px;margin-bottom:20px}
 .stack{display:flex;flex-direction:column;gap:12px}
-.result{display:flex;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:16px;
-  text-align:left;width:100%;transition:.16s;background:var(--card)}
+.set-row{display:flex;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.set-row:last-of-type{border-bottom:none}
+.set-main{flex:1;min-width:180px}
+.set-title{font-family:var(--display);font-size:17px;font-weight:500;line-height:1.3}
+.set-note{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.6}
+.set-note strong{color:var(--accent);font-weight:600}
+.result{display:flex;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:18px;
+  text-align:left;width:100%;transition:.2s;background:var(--card)}
 .result:hover{border-color:var(--accent);background:var(--accent-soft);transform:translateX(3px)}
 .result-main{flex:1;min-width:0}
 .result-t{font-family:var(--display);font-size:17px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .result-s{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .count{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:10px;background:var(--wash);backdrop-filter:blur(6px)}
-.count-n{font-family:var(--display);font-size:132px;color:var(--accent);font-weight:300;line-height:1;animation:pop .7s ease-out}
-@keyframes pop{0%{transform:scale(.55);opacity:0}45%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+.count-n{font-family:var(--display);font-size:132px;color:var(--accent);font-weight:300;line-height:1;animation:pop .55s cubic-bezier(.2,.8,.3,1)}
+@keyframes pop{0%{transform:scale(.78);opacity:0}100%{transform:scale(1);opacity:1}}
 .count-q{font-family:var(--deva);font-size:18px;color:var(--ink);opacity:.8;max-width:22ch;text-align:center;
   line-height:1.85;padding:0 20px}
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:var(--bg);
   padding:13px 24px;border-radius:999px;z-index:80;font-size:14px;font-weight:600;
   box-shadow:0 14px 40px rgba(64,36,58,.3);max-width:90vw;text-align:center;animation:rise .3s ease-out}
 @keyframes rise{from{transform:translate(-50%,14px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
-.notice{background:var(--accent-soft);border:1.5px solid var(--accent);color:var(--ink);border-radius:16px;
-  padding:14px 18px;font-size:13px;margin-bottom:16px;line-height:1.65}
+.notice{background:var(--accent-soft);border:1.5px solid var(--accent);color:var(--ink);border-radius:18px;
+  padding:15px 19px;font-size:13px;margin-bottom:16px;line-height:1.65}
 .notice code{background:var(--card);padding:2px 7px;border-radius:5px;font-size:12px;word-break:break-all}
 .spin{display:inline-block;width:15px;height:15px;border:2px solid var(--line);border-top-color:var(--accent);
   border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
@@ -259,9 +266,9 @@ kbd{background:var(--card2);border:1px solid var(--line);border-radius:6px;paddi
         <button class="room-btn is-on" data-room="songbook">Songbook</button>
         <button class="room-btn" data-room="stage">Sing</button>
         <button class="room-btn" data-room="takes">My takes</button>
-        <button class="room-btn" data-room="drive">Drive</button>
       </nav>
       <button class="theme-btn" id="theme" aria-label="Change the mood" title="Change the mood">☾</button>
+      <button class="theme-btn" id="settings" aria-label="Settings" title="Settings">⚙</button>
     </div>
   </header>
   <main id="view"></main>
@@ -355,7 +362,17 @@ const HAUSLA=[
   {q:'सपनों से कामयाबी तक का रास्ता होता ज़रूर है — बस उसे देखने की नज़र, उस पर चलने की हिम्मत, और डटे रहने का धीरज चाहिए।',
    a:'कल्पना चावला',n:'अनुवाद'},
   {q:'बंद मुट्ठी से कोई हाथ नहीं मिला सकता।',a:'इंदिरा गांधी',n:'अनुवाद'},
-  {q:'जाओ, शिक्षा पाओ — आत्मनिर्भर बनो, मेहनती बनो।',a:'सावित्रीबाई फुले',n:"कविता 'जा, शिक्षा घे' से, अनुवाद"}
+  {q:'जाओ, शिक्षा पाओ — आत्मनिर्भर बनो, मेहनती बनो।',a:'सावित्रीबाई फुले',n:"कविता 'जा, शिक्षा घे' से, अनुवाद"},
+
+  /* शिव और शक्ति — the tradition's own case for the feminine */
+  {q:'शिव भी शक्ति के बिना अधूरे हैं। यही सबसे पुरानी सीख है।',a:'सौंदर्यलहरी',n:'पहले श्लोक का भाव'},
+  {q:'अर्धनारीश्वर — आधे शिव, आधी शक्ति। बराबरी की सबसे पुरानी तस्वीर।'},
+  {q:'सती ने अपना वर खुद चुना था — पिता की मर्ज़ी के खिलाफ़।'},
+  {q:'सती ने अपमान के आगे सिर नहीं झुकाया। सम्मान माँगा नहीं जाता, अपना हक़ होता है।'},
+  {q:'जहाँ सती गिरीं, वहाँ शक्तिपीठ बने। टूटन से भी शक्ति जन्म लेती है।'},
+  {q:'शिव का डमरू बजा, और नाद से सृष्टि बनी। आवाज़ में वही ताक़त आज भी है।'},
+  {q:'जहाँ नाद है, वहाँ शिव हैं। गाना भी एक साधना है।'},
+  {q:'पार्वती ने बरसों तप किया, जो चाहिए था उसके लिए। ज़िद भी एक साधना है।'}
 ];
 /* fresh line every visit, and a new one every five minutes */
 let hauslaIdx=Math.floor(Math.random()*HAUSLA.length);
@@ -441,6 +458,7 @@ function applyTheme(){
     prefs.theme = prefs.theme==='evening' ? 'day' : 'evening';
     applyTheme(); await Store.set(K.prefs,prefs);
   };
+  $('#settings').onclick=()=>openSettings();
   document.querySelectorAll('.room-btn').forEach(b=>b.onclick=()=>go(b.dataset.room));
   render();
   autoConnect();
@@ -453,7 +471,7 @@ function go(r){
 function render(){
   document.querySelectorAll('.room-btn').forEach(b=>b.classList.toggle('is-on',b.dataset.room===room));
   stopScroll();
-  ({songbook:renderSongbook,stage:renderStage,takes:renderTakes,drive:renderDrive}[room])();
+  ({songbook:renderSongbook,stage:renderStage,takes:renderTakes}[room])();
   window.scrollTo({top:0,behavior:'instant'});
 }
 
@@ -888,7 +906,7 @@ const persistTakes=()=>Store.set(K.takes,takes.map(({url,...r})=>r));
 /* ══════════════════════════════════════════════════════════
    Google Drive
    ══════════════════════════════════════════════════════════ */
-let tokenClient=null,accessToken=null,tokenExp=0,driveFolder=null,driveFiles=null,driveErr=null;
+let tokenClient=null,accessToken=null,tokenExp=0,driveFolder=null,driveErr=null;
 const driveToken=()=>accessToken&&Date.now()<tokenExp?accessToken:null;
 
 function gisReady(){return !!(window.google&&google.accounts&&google.accounts.oauth2);}
@@ -1032,7 +1050,7 @@ async function syncAll(quiet=true){
     lastSync=Date.now();
     if(!quiet) toast(`Synced · ${songs.length} songs, ${takes.length} takes`);
     else if(a||b) toast(`Found ${a?a+' song'+(a>1?'s':''):''}${a&&b?' and ':''}${b?b+' recording'+(b>1?'s':''):''} in Drive`);
-    if(room==='songbook'||room==='takes'||room==='drive') render();
+    if(room==='songbook'||room==='takes') render();
   }catch(e){ driveErr=describe(e); }
   finally{ syncing=false; }
 }
@@ -1049,7 +1067,7 @@ async function autoConnect(){
   if(!prefs.driveLinked)return;
   for(let i=0;i<24&&!gisReady();i++) await new Promise(r=>setTimeout(r,250));
   if(!gisReady())return;
-  try{ await connectDrive(false); scheduleRenew(); await syncAll(true); if(room==='drive')render(); }
+  try{ await connectDrive(false); scheduleRenew(); await syncAll(true); }
   catch(e){ /* she taps Connect once and it's back */ }
 }
 
@@ -1066,12 +1084,11 @@ async function uploadTake(take,quiet=false){
       {method:'POST',body:fd});
     const f=await r.json();
     take.driveId=f.id;take.driveLink=f.webViewLink;
-    await persistTakes();driveFiles=null;
-    toast('Saved to Drive · '+folder.name);
+    await persistTakes();toast('Saved to Drive · '+folder.name);
     if(room==='takes')renderTakes();
   }catch(e){
     driveErr=describe(e);
-    toast('Drive upload failed — open the Drive tab for details');
+    toast('Could not save that to Drive');
   }
 }
 
@@ -1095,108 +1112,86 @@ function describe(e){
   return 'Drive could not finish that. Try again in a moment.';
 }
 
-async function renderDrive(){
+function openSettings(){
+  document.querySelectorAll('.veil').forEach(v=>v.remove());
   const signed=!!driveToken();
-  view.innerHTML=`
-    ${driveErr?`<div class="notice"><strong>Drive said no.</strong><br>${esc(driveErr)}</div>`:''}
-    <div class="panel" style="margin-bottom:18px">
-      <div class="row">
-        <div style="flex:1;min-width:210px">
-          <div class="tool-label">Google Drive</div>
-          <div style="font-family:var(--display);font-size:20px">${signed?'Connected':(prefs.driveLinked?'Reconnecting…':'Not connected yet')}</div>
-          <p style="font-size:13px;color:var(--muted);margin-top:4px">
-            ${signed?`Songbook and recordings live in <strong style="color:var(--accent)">${esc(driveFolder?.name||'…')}</strong>${driveFolder&&!driveFolder.configured?' <span style="color:var(--live)">(a folder the app made — not the one you linked)</span>':''}.
-                      ${lastSync?'Last synced '+new Date(lastSync).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})+'.':''}
-                      Signs in on its own from now on.`
-                    :'Sign in once. After that it connects by itself, and your songbook follows you to any device.'}</p>
-        </div>
-        <label class="switch"><input type="checkbox" id="auto" ${prefs.autoUpload?'checked':''}><span>Upload every take</span></label>
-        ${signed?`<button class="btn" id="sync">${syncing?'<span class="spin"></span> Syncing':'↻ Sync now'}</button>`:''}
-        <button class="btn ${signed?'':'btn-primary'}" id="conn">${signed?'Reconnect':'Connect Google Drive'}</button>
-        <a class="btn" href="${CFG.FOLDER_URL}" target="_blank" rel="noopener">Open folder ↗</a>
-        ${prefs.driveLinked?`<button class="btn btn-quiet" id="unlink">Turn off auto-connect</button>`:''}
-      </div>
-    </div>
-    <div id="dlist">${signed?'<div style="color:var(--muted)"><span class="spin"></span> Reading your folder…</div>':`
-      <div class="empty">
-        <h3>Keep every song safe</h3>
-        <p>Connect once and your songbook and recordings are saved to Drive —<br>
-        ready on your phone, your laptop, anywhere you feel like singing.</p>
-      </div>`}</div>`;
+  const where = signed
+    ? `Songs and recordings are kept in <strong>${esc(driveFolder?.name||'your folder')}</strong>.`
+      + (driveFolder&&!driveFolder.configured?' <span style="color:var(--live)">This is a folder the app made, not the one you linked.</span>':'')
+      + (lastSync?` Last checked at ${new Date(lastSync).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}.`:'')
+    : 'Connect once and everything is saved for you — ready on any device you sing from.';
 
-  $('#auto').onchange=async e=>{prefs.autoUpload=e.target.checked;await Store.set(K.prefs,prefs);
-    toast(prefs.autoUpload?'Takes will upload on their own':'Uploads are manual now');};
-  $('#conn').onclick=async()=>{
+  const veil=document.createElement('div');veil.className='veil';
+  veil.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-label="Settings">
+    <h2>Settings</h2>
+    <p class="sub">Where your singing is kept.</p>
+    ${driveErr?`<div class="notice">${esc(driveErr)}</div>`:''}
+    <div class="tool-label">Google Drive</div>
+    <div class="set-row">
+      <div class="set-main">
+        <div class="set-title">${signed?'Connected':(prefs.driveLinked?'Reconnecting…':'Not connected')}</div>
+        <div class="set-note">${where}</div>
+      </div>
+      <button class="btn ${signed?'':'btn-primary'}" id="s-conn">${signed?'Reconnect':'Connect'}</button>
+    </div>
+    <div class="set-row">
+      <div class="set-main">
+        <div class="set-title">Save every take</div>
+        <div class="set-note">New recordings go to Drive on their own.</div>
+      </div>
+      <label class="switch"><input type="checkbox" id="s-auto" ${prefs.autoUpload?'checked':''} aria-label="Save every take"></label>
+    </div>
+    ${signed?`<div class="set-row">
+      <div class="set-main">
+        <div class="set-title">Check for new songs</div>
+        <div class="set-note">Pulls in anything recorded on another device.</div>
+      </div>
+      <button class="btn" id="s-sync">${syncing?'<span class="spin"></span>':'↻ Sync now'}</button>
+    </div>`:''}
+    <div class="set-row">
+      <div class="set-main">
+        <div class="set-title">The folder itself</div>
+        <div class="set-note">Opens Google Drive in a new tab.</div>
+      </div>
+      <a class="btn" href="${CFG.FOLDER_URL}" target="_blank" rel="noopener">Open ↗</a>
+    </div>
+    ${prefs.driveLinked?`<div class="set-row">
+      <div class="set-main">
+        <div class="set-title">Connect automatically</div>
+        <div class="set-note">Turning this off keeps everything already in Drive.</div>
+      </div>
+      <button class="btn btn-quiet" id="s-unlink">Turn off</button>
+    </div>`:''}
+    <div class="row" style="justify-content:flex-end;margin-top:22px">
+      <button class="btn btn-primary" id="s-close">Done</button>
+    </div>
+  </div>`;
+  document.body.appendChild(veil);
+  const close=()=>veil.remove();
+  veil.onclick=e=>{if(e.target===veil)close();};
+  document.querySelector('#s-close').onclick=close;
+  document.querySelector('#s-auto').onchange=async e=>{
+    prefs.autoUpload=e.target.checked; await Store.set(K.prefs,prefs);
+    toast(prefs.autoUpload?'Takes will save on their own':'Saving to Drive is manual now');
+  };
+  document.querySelector('#s-conn').onclick=async()=>{
     driveErr=null;
     try{
       await connectDrive(true); await resolveFolder();
       prefs.driveLinked=true; prefs.driveScope=CFG.SCOPE; await Store.set(K.prefs,prefs);
-      scheduleRenew(); renderDrive(); toast('Drive connected');
+      scheduleRenew(); openSettings(); toast('Drive connected');
       await syncAll(false);
-    }catch(e){ driveErr=describe(e); renderDrive(); }
+    }catch(e){ driveErr=describe(e); openSettings(); }
   };
-  const sy=$('#sync'); if(sy) sy.onclick=()=>syncAll(false);
-  const dis=$('#unlink'); if(dis) dis.onclick=async()=>{
+  const sy=document.querySelector('#s-sync');
+  if(sy) sy.onclick=async()=>{ await syncAll(false); openSettings(); };
+  const un=document.querySelector('#s-unlink');
+  if(un) un.onclick=async()=>{
     if(!confirm('Stop connecting to Drive automatically?\n\nNothing in Drive is deleted.'))return;
     prefs.driveLinked=false; await Store.set(K.prefs,prefs);
     accessToken=null; tokenExp=0; clearTimeout(renewTimer);
-    renderDrive(); toast('Automatic connecting is off');
+    openSettings(); toast('Automatic connecting is off');
   };
-  if(signed) listDrive();
-}
-
-async function listDrive(){
-  const box=$('#dlist');if(!box)return;
-  try{
-    const folder=await resolveFolder();
-    const q=encodeURIComponent(`'${folder.id}' in parents and trashed=false`);
-    const r=await api(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime desc&fields=files(id,name,size,createdTime,webViewLink,mimeType)&pageSize=100`);
-    driveFiles=(await r.json()).files||[];
-    if(!driveFiles.length){box.innerHTML=`<div class="empty"><h3>Nothing in there yet</h3><p>Record a take and it'll appear here.</p></div>`;return;}
-    box.innerHTML=driveFiles.map(f=>`
-      <div class="take">
-        <button class="take-play" data-dplay="${f.id}" aria-label="Play ${esc(f.name)}">▶</button>
-        <div class="take-info">
-          <div class="take-name">${esc(f.name)}</div>
-          <div class="take-sub">${when(f.createdTime)} · ${kb(+f.size||0)}</div>
-        </div>
-        <a class="btn btn-sm" href="${esc(f.webViewLink)}" target="_blank" rel="noopener">Open ↗</a>
-        <button class="btn btn-sm btn-quiet" data-dren="${f.id}">Rename</button>
-        <button class="btn btn-sm btn-quiet btn-danger" data-ddel="${f.id}">Delete</button>
-      </div>`).join('');
-    box.querySelectorAll('[data-dplay]').forEach(b=>b.onclick=()=>playDrive(b));
-    box.querySelectorAll('[data-dren]').forEach(b=>b.onclick=async()=>{
-      const f=driveFiles.find(x=>x.id===b.dataset.dren);
-      const name=prompt('Rename this file in Drive',f.name);
-      if(!name||!name.trim())return;
-      await api(`https://www.googleapis.com/drive/v3/files/${f.id}`,{method:'PATCH',
-        headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name.trim()})});
-      toast('Renamed in Drive');listDrive();
-    });
-    box.querySelectorAll('[data-ddel]').forEach(b=>b.onclick=async()=>{
-      const f=driveFiles.find(x=>x.id===b.dataset.ddel);
-      if(!confirm(`Move "${f.name}" to the Drive bin?`))return;
-      await api(`https://www.googleapis.com/drive/v3/files/${f.id}`,{method:'PATCH',
-        headers:{'Content-Type':'application/json'},body:JSON.stringify({trashed:true})});
-      toast('Moved to the bin');listDrive();
-    });
-  }catch(e){ driveErr=describe(e);
-    box.innerHTML=`<div class="notice">${esc(driveErr)}</div>
-      <div class="row"><button class="btn" id="retry">Try again</button></div>`;
-    const rb=document.querySelector('#retry'); if(rb) rb.onclick=()=>listDrive();
-  }
-}
-
-let drivePlaying=null;
-async function playDrive(btn){
-  if(drivePlaying){drivePlaying.a.pause();drivePlaying.b.textContent='▶';const was=drivePlaying.b===btn;drivePlaying=null;if(was)return;}
-  btn.innerHTML='<span class="spin"></span>';
-  try{
-    const r=await api(`https://www.googleapis.com/drive/v3/files/${btn.dataset.dplay}?alt=media`);
-    const url=URL.createObjectURL(await r.blob());
-    const a=new Audio(url);a.play();btn.textContent='❚❚';drivePlaying={a,b:btn};
-    a.onended=()=>{btn.textContent='▶';drivePlaying=null;URL.revokeObjectURL(url);};
-  }catch(e){btn.textContent='▶';toast('Could not play that one');}
 }
 
 /* ══════════════════════════════════════════════════════════
