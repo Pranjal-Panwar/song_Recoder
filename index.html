@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Swati's Little Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700&family=Karla:wght@400;500;700&family=Tiro+Devanagari+Hindi:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+/* ── two moods: morning riyaz (default) and evening lamp ── */
+:root{
+  --bg:#FFF4EC; --bg2:#FFE9DC; --card:#FFFFFF; --card2:#FFFBF7;
+  --ink:#40243A; --muted:#966C82; --line:#F7DACC;
+  --accent:#D6336C; --accent-soft:#FDE6EF; --accent-ink:#FFFFFF;
+  --gold:#F2A03D; --gold-soft:#FFF1DC; --leaf:#2E9C6B; --live:#E5484D;
+  --stage:linear-gradient(180deg,#FFFDFB,#FFF3E9);
+  --fade1:rgba(255,247,240,.30); --fade2:rgba(255,244,236,.94);
+  --beam:rgba(242,160,61,.18);
+  --lit:#40243A; --litglow:0 2px 22px rgba(242,160,61,.55);
+  --shadow:0 10px 28px rgba(214,51,108,.10);
+  --shadow-lift:0 16px 36px rgba(214,51,108,.16);
+  --veil:rgba(64,36,58,.42); --wash:rgba(255,244,236,.93);
+  --ambient:radial-gradient(52vw 42vh at 78% -6%, rgba(242,160,61,.30), transparent 66%),
+            radial-gradient(46vw 40vh at 12% 2%, rgba(214,51,108,.16), transparent 62%);
+  --display:"Fraunces","Iowan Old Style",Georgia,serif;
+  --body:"Karla",-apple-system,"Segoe UI",system-ui,sans-serif;
+  --deva:"Tiro Devanagari Hindi","Noto Serif Devanagari","Nirmala UI",serif;
+}
+body[data-theme=evening]{
+  --bg:#1A1726; --bg2:#232032; --card:#232032; --card2:#2C2840;
+  --ink:#F4EFE6; --muted:#A093B0; --line:#3A3550;
+  --accent:#F2B544; --accent-soft:#2C2840; --accent-ink:#241B06;
+  --gold:#F2B544; --gold-soft:#2C2840; --leaf:#7BD3A0; --live:#F0645E;
+  --stage:linear-gradient(180deg,#232032,#232032);
+  --fade1:rgba(26,23,38,.55); --fade2:rgba(26,23,38,.92);
+  --beam:rgba(242,181,68,.10);
+  --lit:#FFF8EA; --litglow:0 0 26px rgba(242,181,68,.45);
+  --shadow:0 10px 28px rgba(0,0,0,.35); --shadow-lift:0 16px 36px rgba(0,0,0,.45);
+  --veil:rgba(12,10,20,.78); --wash:rgba(12,10,20,.88);
+  --ambient:radial-gradient(58vw 48vh at 50% 34%, rgba(242,181,68,.13), transparent 72%);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;transition:background .4s,color .4s}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+a{color:var(--accent)}
+.room-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background:var(--ambient);
+  animation:breathe 11s ease-in-out infinite;transition:background .4s}
+@keyframes breathe{0%,100%{opacity:.9}50%{opacity:1}}
+.shell{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 20px 96px}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px 0 18px;flex-wrap:wrap}
+.mark{display:flex;align-items:center;gap:12px}
+.mark-dot{width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:15px;
+  background:var(--gold-soft);border:1px solid var(--line);box-shadow:var(--shadow)}
+.mark-name{font-family:var(--display);font-weight:500;font-size:23px;line-height:1.15}
+.mark-name em{font-style:italic;color:var(--accent)}
+.greet{font-family:var(--deva);font-size:13px;color:var(--muted);margin-top:1px}
+.eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.rooms{display:flex;gap:4px;background:var(--card);padding:5px;border-radius:999px;border:1px solid var(--line);
+  flex-wrap:wrap;box-shadow:var(--shadow)}
+.room-btn{padding:8px 16px;border-radius:999px;font-size:14px;font-weight:600;color:var(--muted);transition:.18s}
+.room-btn:hover{color:var(--ink)}
+.room-btn.is-on{background:var(--accent);color:var(--accent-ink)}
+.theme-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--card);
+  display:grid;place-items:center;font-size:16px;box-shadow:var(--shadow);transition:.2s}
+.theme-btn:hover{transform:rotate(18deg) scale(1.06);border-color:var(--gold)}
+
+/* bits */
+.panel{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:var(--shadow)}
+.field{width:100%;background:var(--card2);border:1.5px solid var(--line);border-radius:14px;padding:11px 15px;
+  color:var(--ink);outline:none;transition:border-color .18s,box-shadow .18s}
+.field:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.field::placeholder{color:var(--muted);opacity:.75}
+textarea.field{min-height:180px;resize:vertical;line-height:1.7;font-size:15px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;font-weight:600;
+  font-size:14px;border:1.5px solid var(--line);background:var(--card);transition:.16s;box-shadow:var(--shadow)}
+.btn:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow-lift)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn-primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn-primary:hover{color:var(--accent-ink);filter:brightness(1.08)}
+.btn-quiet{background:none;color:var(--muted);border-color:transparent;padding:8px 12px;box-shadow:none}
+.btn-quiet:hover{color:var(--ink);border-color:var(--line);transform:none;box-shadow:none}
+.btn-danger:hover{border-color:var(--live);color:var(--live)}
+.btn-sm{padding:7px 13px;font-size:13px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.spacer{flex:1}
+:focus-visible{outline:2.5px solid var(--accent);outline-offset:3px;border-radius:8px}
+.tag{font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:999px;
+  border:1px solid var(--line);color:var(--muted);font-weight:700}
+.tag-sync{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+
+/* हौसला */
+.hausla{display:flex;align-items:flex-start;gap:15px;margin:2px 0 24px;padding:20px 24px;border-radius:22px;
+  border:1px solid var(--line);background:var(--card);box-shadow:var(--shadow);position:relative;overflow:hidden}
+.hausla::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(110deg,var(--gold-soft),transparent 55%,var(--accent-soft))}
+.hausla-mark{position:relative;color:var(--gold);font-size:17px;line-height:1.7;flex:none}
+.hausla-body{flex:1;min-width:0;position:relative;transition:opacity .3s,transform .3s}
+.hausla-body.is-fading{opacity:0;transform:translateY(-5px)}
+.hausla-q{font-family:var(--deva);font-size:19px;line-height:1.9;color:var(--ink)}
+.hausla-a{font-family:var(--deva);font-size:13.5px;color:var(--muted);margin-top:8px}
+.hausla-new{position:relative;flex:none;color:var(--muted);font-size:18px;padding:3px 7px;border-radius:10px;transition:.25s}
+.hausla-new:hover{color:var(--accent);background:var(--accent-soft)}
+.hausla-new:active{transform:rotate(180deg)}
+
+/* songbook */
+.search-wrap{position:relative;flex:1;min-width:210px}
+.search-wrap .field{padding-left:42px}
+.search-ico{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px}
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(238px,1fr));gap:16px;margin-top:22px}
+.card{position:relative;text-align:left;width:100%;background:var(--card);border:1px solid var(--line);
+  border-radius:20px;transition:.2s;overflow:hidden;box-shadow:var(--shadow)}
+.card-open{display:block;width:100%;text-align:left;padding:20px;border-radius:20px}
+.card-acts{position:absolute;top:15px;right:14px;z-index:2;display:flex;gap:5px}
+.icon-btn{width:31px;height:31px;border-radius:50%;display:grid;place-items:center;font-size:13px;line-height:1;
+  color:var(--muted);background:var(--card2);border:1px solid var(--line);opacity:.85;transition:.16s}
+.icon-btn:hover{opacity:1;color:var(--accent);border-color:var(--accent);background:var(--accent-soft);transform:scale(1.1)}
+.icon-btn.is-del:hover{color:var(--live);border-color:var(--live);background:transparent}
+.card::before{content:"";position:absolute;left:0;right:0;top:0;height:5px;background:var(--gold)}
+.card[data-tint="1"]::before{background:var(--accent)}
+.card[data-tint="2"]::before{background:var(--leaf)}
+.card[data-tint="3"]::before{background:#7C6BD6}
+.card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lift);border-color:var(--accent)}
+.card-title{font-family:var(--display);font-size:19px;font-weight:500;line-height:1.25;margin:6px 0 4px;padding-right:64px}
+.card-artist{font-size:13px;color:var(--muted)}
+.card-meta{margin-top:15px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  display:flex;align-items:center;gap:8px;font-weight:600}
+.card-add{border:2px dashed var(--line);box-shadow:none;display:flex;align-items:center;justify-content:center;
+  min-height:140px;padding:20px;color:var(--muted);font-size:15px;font-weight:600}
+.card-add::before{display:none}
+.card-add:hover{color:var(--accent);border-color:var(--accent)}
+.empty{text-align:center;padding:52px 20px;color:var(--muted)}
+.empty h3{font-family:var(--display);font-size:26px;color:var(--ink);font-weight:500;margin-bottom:8px}
+
+/* stage */
+.stage-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding:6px 0 16px;flex-wrap:wrap}
+.stage-title{font-family:var(--display);font-size:clamp(26px,4.4vw,40px);font-weight:500;line-height:1.1}
+.stage-artist{color:var(--muted);font-size:14px;margin-top:4px}
+.lamp-stage{position:relative;border-radius:26px;background:var(--stage);border:1px solid var(--line);
+  overflow:hidden;box-shadow:var(--shadow)}
+.lamp-glow{position:absolute;inset:0;pointer-events:none;z-index:2;
+  background:radial-gradient(74% 40% at 50% 50%, transparent 0%, transparent 26%, var(--fade1) 60%, var(--fade2) 100%)}
+.lamp-beam{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:130%;height:34%;
+  pointer-events:none;z-index:1;background:radial-gradient(52% 50% at 50% 50%, var(--beam), transparent 72%)}
+.scroller{position:relative;z-index:1;height:min(54vh,440px);overflow-y:auto;padding:calc(27vh - 20px) 30px;scrollbar-width:none}
+.scroller::-webkit-scrollbar{display:none}
+.lyric{font-family:var(--display);font-weight:400;text-align:center;line-height:1.42;padding:3px 0;
+  color:var(--ink);opacity:.14;transition:opacity .25s,color .25s;cursor:pointer}
+.lyric.is-lit{color:var(--lit);text-shadow:var(--litglow);font-weight:500}
+.lyric.is-blank{min-height:1.1em}
+.transport{display:flex;align-items:center;gap:16px;padding:16px 20px;border-top:1px solid var(--line);
+  flex-wrap:wrap;position:relative;z-index:3;background:var(--card)}
+.rec-btn{position:relative;width:56px;height:56px;border-radius:50%;background:var(--live);flex:none;
+  display:grid;place-items:center;transition:transform .14s;box-shadow:0 6px 18px rgba(229,72,77,.35)}
+.rec-btn:hover{transform:scale(1.07)}
+.rec-btn .glyph{width:20px;height:20px;border-radius:50%;background:#fff}
+.rec-btn.is-live .glyph{border-radius:5px;width:18px;height:18px}
+.rec-btn.is-live::before{content:"";position:absolute;inset:-6px;border-radius:50%;border:2.5px solid var(--live);
+  animation:pulse 1.4s ease-out infinite}
+@keyframes pulse{0%{transform:scale(.9);opacity:.9}100%{transform:scale(1.4);opacity:0}}
+.clock{font-family:var(--display);font-size:26px;font-variant-numeric:tabular-nums;min-width:86px}
+.clock.is-live{color:var(--live)}
+.meter{display:flex;gap:3px;align-items:flex-end;height:30px;width:66px}
+.meter i{flex:1;background:var(--line);border-radius:3px;height:20%;transition:height .07s linear,background .07s}
+.meter i.on{background:var(--accent)}
+.ctrl{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--muted);font-weight:600}
+.ctrl input[type=range]{width:88px;accent-color:var(--accent);cursor:pointer}
+.hint{font-size:12.5px;color:var(--muted);padding:11px 20px 15px}
+kbd{background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:11px;font-family:var(--body);font-weight:600}
+.tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:16px;margin-top:20px}
+.tool-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;font-weight:700}
+.file-drop{display:flex;align-items:center;gap:10px;border:2px dashed var(--line);border-radius:14px;padding:13px 15px;
+  width:100%;color:var(--muted);font-size:14px;text-align:left;font-weight:600;transition:.18s}
+.file-drop:hover{border-color:var(--accent);color:var(--accent)}
+.track-on{display:flex;align-items:center;gap:10px;font-size:14px;background:var(--card2);border-radius:14px;
+  padding:12px 14px;border:1px solid var(--line)}
+.track-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent);font-weight:600}
+.switch{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;user-select:none;font-weight:600}
+.switch input{appearance:none;width:42px;height:24px;border-radius:999px;background:var(--line);position:relative;
+  transition:background .2s;flex:none;cursor:pointer}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+  background:#fff;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.switch input:checked{background:var(--accent)}
+.switch input:checked::after{transform:translateX(18px)}
+
+/* takes + drive */
+.take{display:flex;align-items:center;gap:14px;padding:15px 17px;border:1px solid var(--line);border-radius:18px;
+  background:var(--card);margin-bottom:11px;flex-wrap:wrap;box-shadow:var(--shadow);transition:.18s}
+.take:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift)}
+.take-play{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;
+  flex:none;color:var(--accent);font-size:13px;transition:.18s}
+.take-play:hover{border-color:var(--accent);background:var(--accent-soft)}
+.take-info{flex:1;min-width:150px}
+.take-name{font-family:var(--display);font-size:17px;font-weight:500}
+.take-sub{font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.dot-ok{color:var(--leaf);font-weight:700}
+
+/* overlays */
+.veil{position:fixed;inset:0;background:var(--veil);z-index:50;display:grid;place-items:center;padding:20px;backdrop-filter:blur(4px)}
+.sheet{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:28px;width:100%;
+  max-width:660px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(64,36,58,.28)}
+.sheet h2{font-family:var(--display);font-size:27px;font-weight:500;margin-bottom:4px}
+.sheet .sub{color:var(--muted);font-size:13px;margin-bottom:20px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.result{display:flex;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:16px;
+  text-align:left;width:100%;transition:.16s;background:var(--card)}
+.result:hover{border-color:var(--accent);background:var(--accent-soft);transform:translateX(3px)}
+.result-main{flex:1;min-width:0}
+.result-t{font-family:var(--display);font-size:17px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.result-s{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.count{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;background:var(--wash);backdrop-filter:blur(6px)}
+.count-n{font-family:var(--display);font-size:132px;color:var(--accent);font-weight:300;line-height:1;animation:pop .7s ease-out}
+@keyframes pop{0%{transform:scale(.55);opacity:0}45%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+.count-q{font-family:var(--deva);font-size:18px;color:var(--ink);opacity:.8;max-width:22ch;text-align:center;
+  line-height:1.85;padding:0 20px}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:var(--bg);
+  padding:13px 24px;border-radius:999px;z-index:80;font-size:14px;font-weight:600;
+  box-shadow:0 14px 40px rgba(64,36,58,.3);max-width:90vw;text-align:center;animation:rise .3s ease-out}
+@keyframes rise{from{transform:translate(-50%,14px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+.notice{background:var(--accent-soft);border:1.5px solid var(--accent);color:var(--ink);border-radius:16px;
+  padding:14px 18px;font-size:13px;margin-bottom:16px;line-height:1.65}
+.notice code{background:var(--card);padding:2px 7px;border-radius:5px;font-size:12px;word-break:break-all}
+.spin{display:inline-block;width:15px;height:15px;border:2px solid var(--line);border-top-color:var(--accent);
+  border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.setup{font-size:13px;color:var(--muted);line-height:1.8}
+.setup li{margin-bottom:10px;margin-left:18px}
+.setup code{background:var(--card2);border:1px solid var(--line);padding:3px 8px;border-radius:6px;
+  color:var(--accent);font-size:12px;word-break:break-all;font-weight:600}
+
+@media (max-width:640px){
+  .shell{padding:0 14px 90px}
+  .transport{gap:12px;padding:14px}
+  .clock{font-size:22px;min-width:72px}
+  .scroller{padding-left:16px;padding-right:16px}
+  .meter{display:none}
+  .hausla{padding:17px 19px}
+  .hausla-q{font-size:17.5px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="room-bg" aria-hidden="true"></div>
+<div class="shell">
+  <header class="top">
+    <div class="mark">
+      <span class="mark-dot" aria-hidden="true">✿</span>
+      <div>
+        <div class="mark-name"><em>Swati's</em> little studio</div>
+        <div class="greet" id="greet" lang="hi"></div>
+      </div>
+    </div>
+    <div class="row" style="gap:10px">
+      <nav class="rooms" id="rooms">
+        <button class="room-btn is-on" data-room="songbook">Songbook</button>
+        <button class="room-btn" data-room="stage">Sing</button>
+        <button class="room-btn" data-room="takes">My takes</button>
+        <button class="room-btn" data-room="drive">Drive</button>
+      </nav>
+      <button class="theme-btn" id="theme" aria-label="Change the mood" title="Change the mood">☾</button>
+    </div>
+  </header>
+  <main id="view"></main>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   SETTINGS — change these if anything moves
+   ══════════════════════════════════════════════════════════ */
+const CFG = {
+  CLIENT_ID : '515195793655-7es3o4fl771lbslmdvv2gmg6mnsuc1am.apps.googleusercontent.com',
+  FOLDER_ID : '1KcfFLOCPqfB6L2DJbwAX0jd5oaGlJ7mp',
+  FOLDER_URL: 'https://drive.google.com/drive/folders/1KcfFLOCPqfB6L2DJbwAX0jd5oaGlJ7mp?usp=drive_link',
+  // drive.file = the app only ever touches files it made. Safest.
+  // If you want takes to land inside the folder above instead of an app-made
+  // folder, swap this one line for:  'https://www.googleapis.com/auth/drive'
+  SCOPE     : 'https://www.googleapis.com/auth/drive.file',
+  FALLBACK_FOLDER: "Swati's Studio"
+};
+
+/* ══════════════════════════════════════════════════════════
+   storage — Claude artifact (window.storage) or plain page (localStorage)
+   ══════════════════════════════════════════════════════════ */
+const Store = {
+  widget: !!(typeof window!=='undefined' && window.storage && window.storage.get),
+  async get(k){ if(this.widget){ try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch(e){return null;} }
+                try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;} },
+  async set(k,v){ const s=JSON.stringify(v);
+                if(this.widget){ try{await window.storage.set(k,s);return true;}catch(e){return false;} }
+                try{localStorage.setItem(k,s);return true;}catch(e){return false;} },
+  async del(k){ if(this.widget){ try{await window.storage.delete(k);}catch(e){} return; }
+                try{localStorage.removeItem(k);}catch(e){} }
+};
+const K={songs:'swati:songs',takes:'swati:takes',prefs:'swati:prefs',folder:'swati:folder',blob:id=>'swati:blob:'+id};
+const MAX_SAVE=3.4*1024*1024;
+
+let songs=[],takes=[],prefs={size:34,speed:34,autoUpload:true,offset:0},room='songbook',currentId=null,toastTimer=null;
+
+const $=s=>document.querySelector(s);
+const view=$('#view');
+const uid=()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mmss=s=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+const kb=b=>!b?'—':(b<1048576?Math.round(b/1024)+' KB':(b/1048576).toFixed(1)+' MB');
+const when=t=>new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short'})+' · '+new Date(t).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+const safe=n=>n.replace(/[\\/:*?"<>|]/g,'-');
+
+function toast(msg){
+  document.querySelector('.toast')?.remove();
+  const el=document.createElement('div');el.className='toast';el.textContent=msg;el.setAttribute('role','status');
+  document.body.appendChild(el);clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.remove(),3600);
+}
+
+/* ══════════════════════════════════════════════════════════
+   हौसला — carried in the file, not fetched.
+   There is no lyrics-quality API for Hindi women's-empowerment
+   quotes; the English ones go down and would need machine
+   translation. Local means instant, offline, and correct.
+   Add your own lines here any time — same shape.
+   ══════════════════════════════════════════════════════════ */
+const HAUSLA=[
+  {q:'आवाज़ ऊँची करने के लिए किसी की इजाज़त नहीं चाहिए।'},
+  {q:'जो लड़की अपने सुर पहचान लेती है, वो अपना रास्ता भी पहचान लेती है।'},
+  {q:'डर को गाकर भी हराया जा सकता है।'},
+  {q:'तुम्हारी आवाज़ में जो काँप है, वही तो सच्चाई है — उसे छिपाओ मत।'},
+  {q:'हर बड़ी आवाज़ कभी एक धीमी शुरुआत थी।'},
+  {q:'औरत की सबसे बड़ी ताक़त — अपनी बात खुद कहना।'},
+  {q:'रियाज़ चुपचाप होता है। कामयाबी शोर करती है।'},
+  {q:'बेसुरा गाने से कुछ नहीं बिगड़ता। न गाने से सपने बिगड़ जाते हैं।'},
+  {q:'पहले अपने लिए गाओ। बाकी सब बाद में।'},
+  {q:'जिस दिन तुम अपनी आवाज़ से नहीं डरोगी, दुनिया तुम्हें चुप नहीं करा पाएगी।'},
+  {q:'सपनों की कोई उम्र नहीं होती, और आवाज़ की भी नहीं।'},
+  {q:'जो खुद पर भरोसा करती है, वक़्त भी उसका साथ देता है।'},
+  {q:'तुम किसी की परछाईं नहीं हो। तुम्हारी अपनी रौशनी है।'},
+  {q:'हिम्मत ज़ोर से बोलने का नाम नहीं — अपनी बात पर टिके रहने का नाम है।'},
+  {q:'एक औरत पढ़ती है, तो एक पूरी पीढ़ी पढ़ती है।'},
+  {q:'रुकना मत। रास्ता खुद बनता जाएगा।'},
+  {q:'तुम्हारी खामोशी से कहीं ज़्यादा कीमती तुम्हारी आवाज़ है।'},
+  {q:'आज का बेसुरा गाना, कल की मीठी आवाज़ की पहली सीढ़ी है।'},
+  {q:'गलतियाँ रिकॉर्ड होने दो। वही सबसे अच्छी शिक्षक हैं।'},
+  {q:'तालियाँ मिलें या न मिलें — गाना तुम्हारा अपना है।'},
+  {q:'सपनों से कामयाबी तक का रास्ता होता ज़रूर है — बस उसे देखने की नज़र, उस पर चलने की हिम्मत, और डटे रहने का धीरज चाहिए।',
+   a:'कल्पना चावला',n:'अनुवाद'},
+  {q:'बंद मुट्ठी से कोई हाथ नहीं मिला सकता।',a:'इंदिरा गांधी',n:'अनुवाद'},
+  {q:'जाओ, शिक्षा पाओ — आत्मनिर्भर बनो, मेहनती बनो।',a:'सावित्रीबाई फुले',n:"कविता 'जा, शिक्षा घे' से, अनुवाद"}
+];
+/* fresh line every visit, and a new one every five minutes */
+let hauslaIdx=Math.floor(Math.random()*HAUSLA.length);
+const ROTATE_MS=5*60*1000;
+function nextHausla(){
+  if(HAUSLA.length<2)return;
+  let n;do{n=Math.floor(Math.random()*HAUSLA.length);}while(n===hauslaIdx);
+  hauslaIdx=n;
+}
+const shortHausla=()=>{const s=HAUSLA.filter(h=>!h.a&&h.q.length<58);return s[Math.floor(Math.random()*s.length)].q;};
+
+function hauslaInner(){
+  const h=HAUSLA[hauslaIdx];
+  return `<div class="hausla-q" lang="hi">${esc(h.q)}</div>`+
+    (h.a?`<div class="hausla-a" lang="hi">— ${esc(h.a)}${h.n?` <span style="opacity:.6">(${esc(h.n)})</span>`:''}</div>`:'');
+}
+function hauslaBlock(){
+  return `<div class="hausla">
+    <span class="hausla-mark" aria-hidden="true">✦</span>
+    <div class="hausla-body" id="hbody">${hauslaInner()}</div>
+    <button class="hausla-new" id="hnew" aria-label="एक और">↻</button>
+  </div>`;
+}
+/* swap the words without redrawing the page */
+function paintHausla(){
+  const box=document.querySelector('#hbody');
+  if(!box)return;
+  box.classList.add('is-fading');
+  setTimeout(()=>{box.innerHTML=hauslaInner();box.classList.remove('is-fading');},300);
+}
+setInterval(()=>{nextHausla();paintHausla();},ROTATE_MS);
+
+/* ══════════════════════════════════════════════════════════
+   LRC — time-synced lyric parsing
+   ══════════════════════════════════════════════════════════ */
+function parseLRC(lrc){
+  if(!lrc) return null;
+  const out=[];
+  for(const raw of lrc.split('\n')){
+    const stamps=[...raw.matchAll(/\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]/g)];
+    if(!stamps.length) continue;
+    const text=raw.replace(/\[[^\]]*\]/g,'').trim();
+    for(const m of stamps){
+      const frac=m[3]?parseFloat('0.'+m[3]):0;
+      out.push({t:(+m[1])*60+(+m[2])+frac,text});
+    }
+  }
+  out.sort((a,b)=>a.t-b.t);
+  return out.length?out:null;
+}
+
+/* ══════════════════════════════════════════════════════════
+   boot
+   ══════════════════════════════════════════════════════════ */
+/* नमस्ते — changes with the hour */
+function paintGreet(){
+  const h=new Date().getHours();
+  const line = h<4  ? 'शुभ रात्रि — देर तक जाग रही हो?'
+             : h<11 ? 'सुप्रभात — रियाज़ का सबसे अच्छा वक़्त।'
+             : h<16 ? 'नमस्ते — आज क्या गाना है?'
+             : h<21 ? 'शुभ संध्या — एक गाना हो जाए?'
+             :        'शुभ रात्रि — धीरे से गाओ।';
+  const el=$('#greet'); if(el) el.textContent=line;
+}
+function applyTheme(){
+  document.body.dataset.theme = prefs.theme==='evening' ? 'evening' : 'day';
+  const b=$('#theme'); if(b) b.textContent = prefs.theme==='evening' ? '☀' : '☾';
+}
+
+(async function boot(){
+  songs=await Store.get(K.songs)||[];
+  takes=await Store.get(K.takes)||[];
+  prefs=Object.assign(prefs,await Store.get(K.prefs)||{});
+  driveFolder=await Store.get(K.folder)||null;
+  for(const t of takes){ if(t.saved&&!t.url){ const d=await Store.get(K.blob(t.id)); if(d) t.url=d; } }
+  applyTheme(); paintGreet(); setInterval(paintGreet,60000);
+  $('#theme').onclick=async()=>{
+    prefs.theme = prefs.theme==='evening' ? 'day' : 'evening';
+    applyTheme(); await Store.set(K.prefs,prefs);
+  };
+  document.querySelectorAll('.room-btn').forEach(b=>b.onclick=()=>go(b.dataset.room));
+  render();
+  autoConnect();
+})();
+
+function go(r){
+  if(r==='stage'&&!currentId){ if(!songs.length){ toast('Find a song first'); lyricFinder(); return; } currentId=songs[0].id; }
+  room=r;render();
+}
+function render(){
+  document.querySelectorAll('.room-btn').forEach(b=>b.classList.toggle('is-on',b.dataset.room===room));
+  stopScroll();
+  ({songbook:renderSongbook,stage:renderStage,takes:renderTakes,drive:renderDrive}[room])();
+  window.scrollTo({top:0,behavior:'instant'});
+}
+
+/* ══════════════════════════════════════════════════════════
+   songbook
+   ══════════════════════════════════════════════════════════ */
+let query='';
+function renderSongbook(){
+  const list=songs.filter(s=>(s.title+' '+s.artist).toLowerCase().includes(query.toLowerCase()));
+  view.innerHTML=`
+    ${hauslaBlock()}
+    <div class="row" style="gap:12px">
+      <div class="search-wrap"><span class="search-ico">⌕</span>
+        <input class="field" id="q" placeholder="Search the songs you've saved" value="${esc(query)}"></div>
+      <button class="btn btn-primary" id="find">⌕ Find a song online</button>
+      <button class="btn" id="add">＋ Type it in</button>
+    </div>
+    ${list.length?`<div class="shelf">${list.map((s,i)=>`
+      <div class="card" data-tint="${i%4}">
+        <div class="card-acts">
+          <button class="icon-btn" data-edit="${s.id}" title="Edit this song" aria-label="Edit ${esc(s.title)}">✎</button>
+          <button class="icon-btn is-del" data-remove="${s.id}" title="Remove from songbook" aria-label="Remove ${esc(s.title)}">✕</button>
+        </div>
+        <button class="card-open" data-open="${s.id}">
+          <div class="card-title">${esc(s.title)}</div>
+          <div class="card-artist">${esc(s.artist||'—')}</div>
+          <div class="card-meta">
+            ${s.synced&&s.synced.length?'<span class="tag tag-sync">in time</span>':''}
+            <span>${takes.filter(t=>t.songId===s.id).length} takes</span>
+          </div>
+        </button>
+      </div>`).join('')}
+      <button class="card card-add" id="find2">＋ Find another song</button></div>`
+    :`<div class="empty">
+        <h3>${query?'Nothing saved by that name':'Your songbook is empty'}</h3>
+        <p>${query?'Try another word, or search online for it.':'Search for a song and the lyrics come down with it — timed to the music where they exist.'}</p>
+        <div style="margin-top:18px"><button class="btn btn-primary" id="find3">⌕ Find a song online</button></div>
+      </div>`}`;
+  const hn=$('#hnew');
+  if(hn) hn.onclick=()=>{nextHausla();paintHausla();};
+  const q=$('#q');
+  q.oninput=e=>{query=e.target.value;const p=e.target.selectionStart;renderSongbook();const n=$('#q');n.focus();n.setSelectionRange(p,p);};
+  ['#find','#find2','#find3'].forEach(i=>{const b=$(i);if(b)b.onclick=()=>lyricFinder();});
+  const a=$('#add'); if(a) a.onclick=()=>editor(null);
+  view.querySelectorAll('[data-open]').forEach(c=>c.onclick=()=>{currentId=c.dataset.open;room='stage';render();});
+  view.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editor(b.dataset.edit));
+  view.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>removeSong(b.dataset.remove));
+}
+
+/* one place that removes a song, used by the card and the editor */
+async function removeSong(id){
+  const s=songs.find(x=>x.id===id); if(!s) return;
+  const n=takes.filter(t=>t.songId===id).length;
+  const warn=n?`\n\nThe ${n} recorded take${n>1?'s':''} of it will stay in My takes.`:'';
+  if(!confirm(`Remove "${s.title}" from the songbook?${warn}`)) return;
+  songs=songs.filter(x=>x.id!==id);
+  await saveSongs();
+  if(currentId===id) currentId=songs[0]?.id||null;
+  room='songbook'; render();
+  toast(`"${s.title}" removed`);
+}
+
+/* ── find lyrics online (LRCLIB — open, no key, crowdsourced) ── */
+function lyricFinder(){
+  const veil=document.createElement('div');veil.className='veil';
+  veil.innerHTML=`<div class="sheet" role="dialog" aria-modal="true">
+    <h2>Find a song</h2>
+    <p class="sub">Type a song name — add the singer's name if the first results aren't right.</p>
+    <div class="row" style="gap:10px">
+      <input class="field" id="lq" placeholder="e.g. Kesariya Arijit Singh" style="flex:1;min-width:200px">
+      <button class="btn btn-primary" id="lgo">Search</button>
+    </div>
+    <div id="lres" style="margin-top:18px"></div>
+    <div class="row" style="margin-top:20px;justify-content:flex-end">
+      <button class="btn btn-quiet" id="ltype">Type the lyrics myself</button>
+      <button class="btn" id="lclose">Close</button>
+    </div>
+  </div>`;
+  document.body.appendChild(veil);
+  const close=()=>veil.remove();
+  veil.onclick=e=>{if(e.target===veil)close();};
+  $('#lclose').onclick=close;
+  $('#ltype').onclick=()=>{close();editor(null);};
+  $('#lq').focus();
+  $('#lq').onkeydown=e=>{if(e.key==='Enter')run();};
+  $('#lgo').onclick=run;
+
+  async function run(){
+    const q=$('#lq').value.trim(); if(!q){toast('Type a song name');return;}
+    const box=$('#lres'); box.innerHTML=`<div style="color:var(--muted);font-size:14px"><span class="spin"></span> Searching…</div>`;
+    try{
+      const r=await fetch('https://lrclib.net/api/search?q='+encodeURIComponent(q));
+      if(!r.ok) throw new Error(r.status);
+      const data=await r.json();
+      const hits=data.filter(d=>d.plainLyrics||d.syncedLyrics).slice(0,14);
+      if(!hits.length){ box.innerHTML=`<div style="color:var(--muted);font-size:14px">Nothing found for that. Check the spelling, or type the lyrics in yourself.</div>`; return; }
+      box.innerHTML=`<div class="stack">${hits.map((h,i)=>`
+        <button class="result" data-i="${i}">
+          <div class="result-main">
+            <div class="result-t">${esc(h.trackName)}</div>
+            <div class="result-s">${esc(h.artistName)}${h.albumName?' · '+esc(h.albumName):''}${h.duration?' · '+mmss(h.duration):''}</div>
+          </div>
+          ${h.syncedLyrics?'<span class="tag tag-sync">in time</span>':'<span class="tag">plain</span>'}
+        </button>`).join('')}</div>`;
+      box.querySelectorAll('[data-i]').forEach(b=>b.onclick=async()=>{
+        const h=hits[+b.dataset.i];
+        const synced=parseLRC(h.syncedLyrics);
+        const song={id:uid(),title:h.trackName,artist:h.artistName,
+          lyrics:h.plainLyrics||(synced?synced.map(l=>l.text).join('\n'):''),
+          synced,duration:h.duration||0,createdAt:Date.now()};
+        songs.unshift(song); await saveSongs();
+        currentId=song.id; close(); room='stage'; render();
+        toast(synced?'Added — the lyrics will follow the music':'Added to your songbook');
+      });
+    }catch(e){
+      box.innerHTML=`<div class="notice">Couldn't reach the lyrics service. Check the connection and try again — or type the lyrics in yourself.</div>`;
+    }
+  }
+}
+
+function editor(id){
+  const s=id?songs.find(x=>x.id===id):null;
+  const veil=document.createElement('div');veil.className='veil';
+  veil.innerHTML=`<div class="sheet" role="dialog" aria-modal="true">
+    <h2>${s?'Edit song':'Type in a song'}</h2>
+    <p class="sub">One line per line — that's exactly how it scrolls while you sing.</p>
+    <div class="stack">
+      <input class="field" id="f-title" placeholder="Song name" value="${esc(s?.title||'')}">
+      <input class="field" id="f-artist" placeholder="Singer or film (optional)" value="${esc(s?.artist||'')}">
+      <textarea class="field" id="f-lyrics" placeholder="Paste or type the lyrics here…">${esc(s?.lyrics||'')}</textarea>
+      ${s&&s.synced?`<p style="font-size:12px;color:var(--muted)">This song has timings attached. Editing the words here keeps them, but the timings stay as they were.</p>`:''}
+      <div class="row" style="justify-content:flex-end;margin-top:6px">
+        ${s?`<button class="btn btn-quiet btn-danger" id="f-del">Delete song</button>`:''}
+        <span class="spacer"></span>
+        <button class="btn" id="f-cancel">Cancel</button>
+        <button class="btn btn-primary" id="f-save">${s?'Save changes':'Add to songbook'}</button>
+      </div>
+    </div></div>`;
+  document.body.appendChild(veil);
+  const close=()=>veil.remove();
+  veil.onclick=e=>{if(e.target===veil)close();};
+  $('#f-cancel').onclick=close; $('#f-title').focus();
+  if(s)$('#f-del').onclick=()=>{close();removeSong(s.id);};
+  $('#f-save').onclick=async()=>{
+    const title=$('#f-title').value.trim(),artist=$('#f-artist').value.trim(),lyrics=$('#f-lyrics').value;
+    if(!title){toast('Give the song a name');return;}
+    if(!lyrics.trim()){toast('The lyrics can\'t be empty');return;}
+    if(s)Object.assign(s,{title,artist,lyrics});
+    else{const n={id:uid(),title,artist,lyrics,synced:null,createdAt:Date.now()};songs.unshift(n);currentId=n.id;}
+    await saveSongs();close();render();toast(s?'Saved':'Added to your songbook');
+  };
+}
+
+/* ══════════════════════════════════════════════════════════
+   the stage
+   ══════════════════════════════════════════════════════════ */
+let scrollRAF=null,scrolling=false,lastTS=0,syncRAF=null,following=false;
+let audioCtx=null,micStream=null,micGain=null,analyser=null,mixDest=null,trackSrc=null,trackGain=null;
+let recorder=null,chunks=[],recStart=0,recTimer=null,live=false;
+const trackEl=new Audio();trackEl.preload='auto';
+let trackName=null;
+
+function renderStage(){
+  const s=songs.find(x=>x.id===currentId);
+  if(!s){room='songbook';renderSongbook();return;}
+  const sync=s.synced&&s.synced.length?s.synced:null;
+  const lines=sync?sync.map(l=>l.text):s.lyrics.split('\n');
+
+  view.innerHTML=`
+    <div class="stage-head">
+      <div>
+        <div class="eyebrow">now singing</div>
+        <h1 class="stage-title">${esc(s.title)}</h1>
+        <div class="stage-artist">${esc(s.artist||'')}</div>
+      </div>
+      <div class="row">
+        <select class="field" id="pick" style="width:auto;max-width:200px">
+          ${songs.map(x=>`<option value="${x.id}" ${x.id===s.id?'selected':''}>${esc(x.title)}</option>`).join('')}
+        </select>
+        <button class="btn btn-quiet" id="edit">Edit lyrics</button>
+      </div>
+    </div>
+    <div id="mic-note"></div>
+    <div class="lamp-stage">
+      <div class="lamp-beam" aria-hidden="true"></div>
+      <div class="lamp-glow" aria-hidden="true"></div>
+      <div class="scroller" id="scroller" tabindex="0" aria-label="Lyrics">
+        ${lines.map((l,i)=>l.trim()
+          ?`<div class="lyric" data-i="${i}"${sync?` data-t="${sync[i].t}"`:''}>${esc(l)}</div>`
+          :`<div class="lyric is-blank" data-i="${i}">&nbsp;</div>`).join('')}
+      </div>
+      <div class="transport">
+        <button class="rec-btn" id="rec" aria-label="Start recording"><span class="glyph"></span></button>
+        <div class="clock" id="clock">00:00</div>
+        <div class="meter" id="meter">${'<i></i>'.repeat(7)}</div>
+        ${sync?`<label class="switch"><input type="checkbox" id="follow" ${following?'checked':''}><span>Follow the music</span></label>`
+              :`<button class="btn" id="roll">▶ Scroll</button>`}
+        <span class="spacer"></span>
+        ${sync?`<div class="ctrl"><span>Nudge</span><input type="range" id="offset" min="-5" max="5" step="0.1" value="${prefs.offset}" aria-label="Timing nudge"></div>`
+              :`<div class="ctrl"><span>Speed</span><input type="range" id="speed" min="6" max="90" value="${prefs.speed}" aria-label="Scroll speed"></div>`}
+        <div class="ctrl"><span>Text</span><input type="range" id="size" min="20" max="60" value="${prefs.size}" aria-label="Text size"></div>
+      </div>
+      <div class="hint">${sync
+        ? `The lyrics move on their own once the music plays. <kbd>R</kbd> records · nudge the timing if the words run early or late.`
+        : `<kbd>Space</kbd> scroll on/off · <kbd>R</kbd> record · tap any line to bring it under the lamp`}</div>
+    </div>
+    <div class="tools">
+      <div class="panel">
+        <div class="tool-label">Background music</div>
+        <div id="track-slot"></div>
+        <p style="font-size:12px;color:var(--muted);margin-top:10px">Wear headphones — then the music won't leak into your voice.</p>
+      </div>
+      <div class="panel">
+        <div class="tool-label">Voice level</div>
+        <input type="range" id="micvol" min="0" max="200" value="115" style="width:100%;accent-color:var(--accent)" aria-label="Voice level">
+        <div class="tool-label" style="margin:16px 0 8px">Music level</div>
+        <input type="range" id="trkvol" min="0" max="150" value="70" style="width:100%;accent-color:var(--accent)" aria-label="Music level">
+      </div>
+    </div>`;
+
+  $('#pick').onchange=e=>{currentId=e.target.value;stopFollow();render();};
+  $('#edit').onclick=()=>editor(s.id);
+  const scroller=$('#scroller');
+  const applySize=v=>{prefs.size=+v;scroller.querySelectorAll('.lyric').forEach(l=>l.style.fontSize=v+'px');relight();Store.set(K.prefs,prefs);};
+  applySize(prefs.size);
+  $('#size').oninput=e=>applySize(e.target.value);
+  const sp=$('#speed'); if(sp) sp.oninput=e=>{prefs.speed=+e.target.value;Store.set(K.prefs,prefs);};
+  const of=$('#offset'); if(of) of.oninput=e=>{prefs.offset=+e.target.value;Store.set(K.prefs,prefs);};
+
+  scroller.addEventListener('scroll',()=>requestAnimationFrame(relight),{passive:true});
+  scroller.querySelectorAll('.lyric').forEach(l=>l.onclick=()=>{
+    centre(l);
+    if(sync&&trackName&&l.dataset.t){ trackEl.currentTime=Math.max(0,+l.dataset.t); }
+  });
+  scroller.addEventListener('wheel',()=>stopScroll(),{passive:true});
+
+  const roll=$('#roll'); if(roll) roll.onclick=()=>scrolling?stopScroll():startScroll();
+  const fol=$('#follow'); if(fol) fol.onchange=e=>e.target.checked?startFollow():stopFollow();
+  $('#rec').onclick=()=>live?stopRec():startRec();
+  $('#micvol').oninput=e=>{if(micGain)micGain.gain.value=e.target.value/100;};
+  $('#trkvol').oninput=e=>{const v=e.target.value/100;if(trackGain)trackGain.gain.value=v;trackEl.volume=Math.min(1,v);};
+
+  drawTrackSlot();relight();
+  if(sync&&fol&&fol.checked) startFollow();
+
+  document.onkeydown=e=>{
+    if(room!=='stage')return;
+    if(/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName))return;
+    if(e.code==='Space'&&!sync){e.preventDefault();scrolling?stopScroll():startScroll();}
+    if(e.key==='r'||e.key==='R'){e.preventDefault();live?stopRec():startRec();}
+  };
+}
+
+const centre=l=>{const sc=$('#scroller');if(sc)sc.scrollTo({top:l.offsetTop-sc.clientHeight/2+l.offsetHeight/2,behavior:'smooth'});};
+
+function relight(){
+  const sc=$('#scroller');if(!sc)return;
+  const mid=sc.scrollTop+sc.clientHeight/2,reach=sc.clientHeight*0.30;
+  let best=null,bestD=Infinity;
+  sc.querySelectorAll('.lyric').forEach(l=>{
+    const d=Math.abs(l.offsetTop+l.offsetHeight/2-mid);
+    l.style.opacity=Math.max(.09,1-Math.pow(d/reach,1.5)).toFixed(3);
+    if(d<bestD&&!l.classList.contains('is-blank')){bestD=d;best=l;}
+    l.classList.remove('is-lit');
+  });
+  if(best&&bestD<reach*0.55)best.classList.add('is-lit');
+}
+
+/* constant-speed scroll (songs with no timings) */
+function startScroll(){
+  const sc=$('#scroller');if(!sc)return;
+  scrolling=true;lastTS=0;const b=$('#roll');if(b)b.textContent='❚❚ Pause';
+  const step=ts=>{
+    if(!scrolling)return;
+    if(lastTS){sc.scrollTop+=prefs.speed*(ts-lastTS)/1000;relight();}
+    lastTS=ts;
+    if(sc.scrollTop+sc.clientHeight>=sc.scrollHeight-2){stopScroll();return;}
+    scrollRAF=requestAnimationFrame(step);
+  };
+  scrollRAF=requestAnimationFrame(step);
+}
+function stopScroll(){scrolling=false;if(scrollRAF)cancelAnimationFrame(scrollRAF);scrollRAF=null;const b=$('#roll');if(b)b.textContent='▶ Scroll';}
+
+/* timed follow (songs with LRC timings) */
+function startFollow(){
+  following=true;let lastIdx=-1;
+  const tick=()=>{
+    if(!following)return;
+    const sc=$('#scroller');
+    if(!sc){following=false;return;}
+    let clock=null;
+    if(trackName&&!trackEl.paused) clock=trackEl.currentTime;
+    else if(live) clock=(Date.now()-recStart)/1000;
+    if(clock!==null){
+      const t=clock+ (+prefs.offset||0);
+      const ls=[...sc.querySelectorAll('.lyric[data-t]')];
+      let idx=-1;
+      for(let i=0;i<ls.length;i++){ if(+ls[i].dataset.t<=t) idx=i; else break; }
+      if(idx>=0&&idx!==lastIdx){ lastIdx=idx; centre(ls[idx]); }
+    }
+    syncRAF=requestAnimationFrame(tick);
+  };
+  syncRAF=requestAnimationFrame(tick);
+}
+function stopFollow(){following=false;if(syncRAF)cancelAnimationFrame(syncRAF);syncRAF=null;}
+
+/* ── background track ── */
+function drawTrackSlot(){
+  const slot=$('#track-slot');if(!slot)return;
+  if(trackName){
+    slot.innerHTML=`<div class="track-on">
+      <button class="take-play" id="tprev" aria-label="Play music">▶</button>
+      <span class="track-name">${esc(trackName)}</span>
+      <button class="btn btn-quiet" id="tclear" aria-label="Remove music">✕</button></div>`;
+    $('#tprev').onclick=async e=>{
+      await ensureAudio();
+      if(trackEl.paused){trackEl.play();e.currentTarget.textContent='❚❚';}
+      else{trackEl.pause();trackEl.currentTime=0;e.currentTarget.textContent='▶';}
+    };
+    $('#tclear').onclick=()=>{trackEl.pause();trackEl.removeAttribute('src');trackName=null;drawTrackSlot();};
+  }else{
+    slot.innerHTML=`<button class="file-drop" id="tpick">＋ Add an instrumental or karaoke track</button>
+      <input type="file" id="tfile" accept="audio/*" hidden>`;
+    $('#tpick').onclick=()=>$('#tfile').click();
+    $('#tfile').onchange=e=>{
+      const f=e.target.files[0];if(!f)return;
+      trackEl.src=URL.createObjectURL(f);trackName=f.name;trackEl.volume=0.7;
+      drawTrackSlot();toast('Music ready — it records together with your voice');
+    };
+  }
+}
+
+/* ── audio graph ── */
+async function ensureAudio(){
+  if(!audioCtx){
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    mixDest=audioCtx.createMediaStreamDestination();
+    trackGain=audioCtx.createGain();trackGain.gain.value=0.7;
+    trackSrc=audioCtx.createMediaElementSource(trackEl);
+    trackSrc.connect(trackGain);
+    trackGain.connect(audioCtx.destination);
+    trackGain.connect(mixDest);
+  }
+  if(audioCtx.state==='suspended')await audioCtx.resume();
+}
+async function ensureMic(){
+  if(micStream&&micStream.active)return true;
+  try{ micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}); }
+  catch(err){
+    const n=$('#mic-note');
+    if(n)n.innerHTML=`<div class="notice"><strong>The microphone is blocked.</strong><br>
+      Allow microphone access for this page in your browser, then press record again.
+      If this is showing inside a preview frame, open it in its own browser tab first.</div>`;
+    return false;
+  }
+  await ensureAudio();
+  const src=audioCtx.createMediaStreamSource(micStream);
+  micGain=audioCtx.createGain();
+  const mv=$('#micvol');micGain.gain.value=mv?mv.value/100:1.15;
+  analyser=audioCtx.createAnalyser();analyser.fftSize=512;
+  src.connect(micGain);micGain.connect(mixDest);micGain.connect(analyser);
+  meterLoop();return true;
+}
+function meterLoop(){
+  const bars=document.querySelectorAll('#meter i');
+  if(!bars.length||!analyser)return;
+  const buf=new Uint8Array(analyser.frequencyBinCount);
+  const tick=()=>{
+    if(!analyser||!document.querySelector('#meter'))return;
+    analyser.getByteTimeDomainData(buf);
+    let peak=0;for(let i=0;i<buf.length;i++)peak=Math.max(peak,Math.abs(buf[i]-128)/128);
+    const lvl=Math.min(1,peak*2.6);
+    bars.forEach((b,i)=>{const on=lvl>(i+1)/bars.length*.95;b.classList.toggle('on',on);b.style.height=(20+(on?70:0)*((i+1)/bars.length)+lvl*10)+'%';});
+    requestAnimationFrame(tick);
+  };tick();
+}
+async function countdown(){
+  const el=document.createElement('div');el.className='count';
+  el.innerHTML=`<div class="count-n">3</div><div class="count-q" lang="hi">${esc(shortHausla())}</div>`;
+  document.body.appendChild(el);
+  const n=el.querySelector('.count-n');
+  for(const d of ['3','2','1']){n.textContent=d;await new Promise(r=>setTimeout(r,700));}
+  el.remove();
+}
+
+async function startRec(){
+  if(!await ensureMic())return;
+  await ensureAudio();await countdown();
+  chunks=[];
+  const type=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(t=>MediaRecorder.isTypeSupported(t))||'';
+  recorder=new MediaRecorder(mixDest.stream,type?{mimeType:type}:undefined);
+  recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+  recorder.onstop=finishRec;
+  recorder.start();
+  if(trackName){trackEl.currentTime=0;trackEl.play().catch(()=>{});}
+  live=true;recStart=Date.now();
+  const b=$('#rec'),c=$('#clock');
+  b.classList.add('is-live');b.setAttribute('aria-label','Stop recording');c.classList.add('is-live');
+  recTimer=setInterval(()=>{c.textContent=mmss((Date.now()-recStart)/1000);},200);
+  const s=songs.find(x=>x.id===currentId);
+  if(s&&s.synced&&s.synced.length){ const f=$('#follow'); if(f&&!f.checked){f.checked=true;} if(!following)startFollow(); }
+  else if(!scrolling) startScroll();
+}
+function stopRec(){if(recorder&&recorder.state!=='inactive')recorder.stop();}
+
+async function finishRec(){
+  live=false;clearInterval(recTimer);stopScroll();
+  trackEl.pause();trackEl.currentTime=0;
+  const b=$('#rec'),c=$('#clock');
+  if(b){b.classList.remove('is-live');b.setAttribute('aria-label','Start recording');}
+  if(c)c.classList.remove('is-live');
+  const blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});
+  const dur=(Date.now()-recStart)/1000;
+  if(blob.size<2000||dur<1){toast('That take was too short to keep');return;}
+  const song=songs.find(x=>x.id===currentId);
+  const n=takes.filter(t=>t.songId===currentId).length+1;
+  const take={id:uid(),songId:currentId,title:`${song.title} — take ${n}`,at:Date.now(),
+    dur:Math.round(dur),size:blob.size,mime:blob.type,
+    ext:(blob.type.includes('mp4')?'m4a':'webm'),url:URL.createObjectURL(blob),saved:false,driveId:null};
+  if(blob.size<=MAX_SAVE){
+    const data=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob);});
+    if(await Store.set(K.blob(take.id),data)){take.saved=true;take.url=data;}
+  }
+  takes.unshift(take);
+  await persistTakes();
+  room='takes';render();
+  if(prefs.autoUpload&&driveToken()) uploadTake(take,true);
+  else toast(take.saved?'Take saved':'Take ready — download it to keep it');
+}
+const persistTakes=()=>Store.set(K.takes,takes.map(({url,...r})=>r));
+
+/* ══════════════════════════════════════════════════════════
+   Google Drive
+   ══════════════════════════════════════════════════════════ */
+let tokenClient=null,accessToken=null,tokenExp=0,driveFolder=null,driveFiles=null,driveErr=null;
+const driveToken=()=>accessToken&&Date.now()<tokenExp?accessToken:null;
+
+function gisReady(){return !!(window.google&&google.accounts&&google.accounts.oauth2);}
+
+function connectDrive(interactive=true){
+  return new Promise((res,rej)=>{
+    if(!gisReady()){rej(new Error('gis'));return;}
+    if(!tokenClient){
+      tokenClient=google.accounts.oauth2.initTokenClient({
+        client_id:CFG.CLIENT_ID,scope:CFG.SCOPE,
+        callback:t=>{
+          if(t.error){rej(new Error(t.error));return;}
+          accessToken=t.access_token;tokenExp=Date.now()+(t.expires_in-90)*1000;res(accessToken);
+        },
+        error_callback:e=>rej(new Error(e.type||'popup'))
+      });
+    }
+    tokenClient.callback=t=>{
+      if(t.error){rej(new Error(t.error));return;}
+      accessToken=t.access_token;tokenExp=Date.now()+((t.expires_in||3600)-90)*1000;res(accessToken);
+    };
+    tokenClient.requestAccessToken({prompt:interactive?'':'none'});
+  });
+}
+async function needToken(){ return driveToken()||await connectDrive(true); }
+
+async function api(path,opts={}){
+  const t=await needToken();
+  const r=await fetch(path,{...opts,headers:{Authorization:'Bearer '+t,...(opts.headers||{})}});
+  if(!r.ok){ const txt=await r.text(); const e=new Error(txt); e.status=r.status; throw e; }
+  return r;
+}
+
+/* find a folder we're allowed to write into */
+async function resolveFolder(){
+  if(driveFolder)return driveFolder;
+  try{
+    const r=await api(`https://www.googleapis.com/drive/v3/files/${CFG.FOLDER_ID}?fields=id,name`);
+    const f=await r.json();
+    driveFolder={id:f.id,name:f.name,configured:true};
+  }catch(e){
+    // drive.file can't reach a folder it didn't make — use our own instead
+    const q=encodeURIComponent(`name='${CFG.FALLBACK_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+    const r=await api(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`);
+    const {files}=await r.json();
+    if(files&&files.length) driveFolder={id:files[0].id,name:files[0].name,configured:false};
+    else{
+      const c=await api('https://www.googleapis.com/drive/v3/files?fields=id,name',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:CFG.FALLBACK_FOLDER,mimeType:'application/vnd.google-apps.folder'})});
+      const f=await c.json();driveFolder={id:f.id,name:f.name,configured:false};
+    }
+  }
+  await Store.set(K.folder,driveFolder);
+  return driveFolder;
+}
+
+/* ── the songbook lives in Drive, so every device shows the same shelf ── */
+const LIB_NAME='swati-studio-library.json';
+let libId=null,pushTimer=null,syncing=false,renewTimer=null,lastSync=null;
+
+async function saveSongs(){ await Store.set(K.songs,songs); queuePush(); }
+const queuePush=()=>{ if(!driveToken())return; clearTimeout(pushTimer); pushTimer=setTimeout(()=>pushLibrary(),2500); };
+
+async function findLib(){
+  if(libId)return libId;
+  const folder=await resolveFolder();
+  const q=encodeURIComponent(`'${folder.id}' in parents and name='${LIB_NAME}' and trashed=false`);
+  const r=await api(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`);
+  const {files}=await r.json();
+  libId=files&&files.length?files[0].id:null;
+  return libId;
+}
+
+async function pullLibrary(){
+  const id=await findLib(); if(!id)return 0;
+  const r=await api(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`);
+  const cloud=await r.json();
+  let added=0;
+  for(const cs of (cloud.songs||[])){
+    const mine=songs.find(x=>x.id===cs.id);
+    if(!mine){ songs.push(cs); added++; }
+    else if((cs.updated||0)>(mine.updated||0)) Object.assign(mine,cs);
+  }
+  songs.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  await Store.set(K.songs, songs);
+  return added;
+}
+
+async function pushLibrary(){
+  if(!driveToken())return;
+  try{
+    const folder=await resolveFolder();
+    const id=await findLib();
+    const fd=new FormData();
+    fd.append('metadata',new Blob([JSON.stringify(id?{name:LIB_NAME}:{name:LIB_NAME,parents:[folder.id]})],{type:'application/json'}));
+    fd.append('file',new Blob([JSON.stringify({v:1,savedAt:Date.now(),songs})],{type:'application/json'}));
+    const url=id?`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=multipart&fields=id`
+                :`https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id`;
+    const r=await api(url,{method:id?'PATCH':'POST',body:fd});
+    libId=(await r.json()).id;
+  }catch(e){ /* try again on the next change */ }
+}
+
+/* every recording already in Drive shows up in My takes, wherever it was made */
+async function mergeCloudTakes(){
+  const folder=await resolveFolder();
+  const q=encodeURIComponent(`'${folder.id}' in parents and trashed=false`);
+  const r=await api(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime desc&fields=files(id,name,size,createdTime,mimeType)&pageSize=300`);
+  const files=(await r.json()).files||[];
+  let added=0;
+  for(const f of files){
+    if(!/^audio\//.test(f.mimeType||''))continue;
+    if(takes.some(t=>t.driveId===f.id))continue;
+    takes.push({id:'d_'+f.id,songId:null,title:f.name.replace(/\.[^.]+$/,''),
+      at:new Date(f.createdTime).getTime(),dur:0,size:+f.size||0,
+      ext:(f.name.split('.').pop()||'webm'),driveId:f.id,cloud:true,saved:false,url:null});
+    added++;
+  }
+  takes.sort((a,b)=>(b.at||0)-(a.at||0));
+  await persistTakes();
+  return added;
+}
+
+async function syncAll(quiet=true){
+  if(syncing||!driveToken())return;
+  syncing=true;
+  try{
+    const a=await pullLibrary();
+    const b=await mergeCloudTakes();
+    await pushLibrary();
+    lastSync=Date.now();
+    if(!quiet) toast(`Synced · ${songs.length} songs, ${takes.length} takes`);
+    else if(a||b) toast(`Found ${a?a+' song'+(a>1?'s':''):''}${a&&b?' and ':''}${b?b+' recording'+(b>1?'s':''):''} in Drive`);
+    if(room==='songbook'||room==='takes'||room==='drive') render();
+  }catch(e){ driveErr=describe(e); }
+  finally{ syncing=false; }
+}
+
+/* keep the token alive so a long practice session never breaks */
+function scheduleRenew(){
+  clearTimeout(renewTimer);
+  const ms=Math.max(60000,tokenExp-Date.now()-300000);
+  renewTimer=setTimeout(async()=>{ try{ await connectDrive(false); scheduleRenew(); }catch(e){} },ms);
+}
+
+/* on load: sign back in without asking, if Google still remembers her */
+async function autoConnect(){
+  if(!prefs.driveLinked)return;
+  for(let i=0;i<24&&!gisReady();i++) await new Promise(r=>setTimeout(r,250));
+  if(!gisReady())return;
+  try{ await connectDrive(false); scheduleRenew(); await syncAll(true); if(room==='drive')render(); }
+  catch(e){ /* she taps Connect once and it's back */ }
+}
+
+async function uploadTake(take,quiet=false){
+  if(!take.url){toast('That audio is no longer here');return;}
+  try{
+    if(!quiet)toast('Uploading to Drive…');
+    const folder=await resolveFolder();
+    const blob=await(await fetch(take.url)).blob();
+    const fd=new FormData();
+    fd.append('metadata',new Blob([JSON.stringify({name:safe(take.title)+'.'+take.ext,parents:[folder.id]})],{type:'application/json'}));
+    fd.append('file',blob);
+    const r=await api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
+      {method:'POST',body:fd});
+    const f=await r.json();
+    take.driveId=f.id;take.driveLink=f.webViewLink;
+    await persistTakes();driveFiles=null;
+    toast('Saved to Drive · '+folder.name);
+    if(room==='takes')renderTakes();
+  }catch(e){
+    driveErr=describe(e);
+    toast('Drive upload failed — open the Drive tab for details');
+  }
+}
+
+function describe(e){
+  const m=String(e.message||e);
+  if(m.includes('gis'))return 'The Google sign-in library did not load. Check the connection, or that nothing is blocking accounts.google.com.';
+  if(m.includes('popup')||m.includes('interaction'))return 'The sign-in window was closed or blocked. Allow pop-ups for this page and try again.';
+  if(m.includes('idpiframe')||m.includes('origin')||m.includes('invalid_client'))
+    return `This page's address isn't on the OAuth client's allowed list. Add ${location.origin} under "Authorized JavaScript origins" in Google Cloud Console.`;
+  if(m.includes('accessNotConfigured')||m.includes('has not been used'))return 'The Drive API is switched off for this Google Cloud project. Enable it, wait a minute, and try again.';
+  if(m.includes('access_denied'))return 'Google refused the sign-in. If the consent screen is still in Testing, add this Google account as a test user.';
+  if(m.includes('storageQuotaExceeded'))return 'The Drive account is out of space.';
+  return m.slice(0,320);
+}
+
+async function renderDrive(){
+  const signed=!!driveToken();
+  view.innerHTML=`
+    ${driveErr?`<div class="notice"><strong>Drive said no.</strong><br>${esc(driveErr)}</div>`:''}
+    <div class="panel" style="margin-bottom:18px">
+      <div class="row">
+        <div style="flex:1;min-width:210px">
+          <div class="tool-label">Google Drive</div>
+          <div style="font-family:var(--display);font-size:20px">${signed?'Connected':(prefs.driveLinked?'Reconnecting…':'Not connected yet')}</div>
+          <p style="font-size:13px;color:var(--muted);margin-top:4px">
+            ${signed?`Songbook and recordings live in <strong style="color:var(--accent)">${esc(driveFolder?.name||'…')}</strong>.
+                      ${lastSync?'Last synced '+new Date(lastSync).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})+'.':''}
+                      Signs in on its own from now on.`
+                    :'Sign in once. After that it connects by itself, and your songbook follows you to any device.'}</p>
+        </div>
+        <label class="switch"><input type="checkbox" id="auto" ${prefs.autoUpload?'checked':''}><span>Upload every take</span></label>
+        ${signed?`<button class="btn" id="sync">${syncing?'<span class="spin"></span> Syncing':'↻ Sync now'}</button>`:''}
+        <button class="btn ${signed?'':'btn-primary'}" id="conn">${signed?'Reconnect':'Connect Google Drive'}</button>
+        <a class="btn" href="${CFG.FOLDER_URL}" target="_blank" rel="noopener">Open folder ↗</a>
+        ${prefs.driveLinked?`<button class="btn btn-quiet" id="unlink">Turn off auto-connect</button>`:''}
+      </div>
+    </div>
+    <div id="dlist">${signed?'<div style="color:var(--muted)"><span class="spin"></span> Reading your folder…</div>':setupHelp()}</div>`;
+
+  $('#auto').onchange=async e=>{prefs.autoUpload=e.target.checked;await Store.set(K.prefs,prefs);
+    toast(prefs.autoUpload?'Takes will upload on their own':'Uploads are manual now');};
+  $('#conn').onclick=async()=>{
+    driveErr=null;
+    try{
+      await connectDrive(true); await resolveFolder();
+      prefs.driveLinked=true; await Store.set(K.prefs,prefs);
+      scheduleRenew(); renderDrive(); toast('Drive connected');
+      await syncAll(false);
+    }catch(e){ driveErr=describe(e); renderDrive(); }
+  };
+  const sy=$('#sync'); if(sy) sy.onclick=()=>syncAll(false);
+  const dis=$('#unlink'); if(dis) dis.onclick=async()=>{
+    if(!confirm('Stop connecting to Drive automatically?\n\nNothing in Drive is deleted.'))return;
+    prefs.driveLinked=false; await Store.set(K.prefs,prefs);
+    accessToken=null; tokenExp=0; clearTimeout(renewTimer);
+    renderDrive(); toast('Automatic connecting is off');
+  };
+  if(signed) listDrive();
+}
+
+function setupHelp(){
+  const onGH=location.hostname.endsWith('github.io');
+  return `<div class="panel"><div class="tool-label">If connecting doesn't work</div>
+    <ol class="setup">
+      <li>In <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud Console → Credentials</a>, open the OAuth client ending <code>…suc1am</code>.</li>
+      <li>Under <strong>Authorized JavaScript origins</strong>, add exactly this and nothing more:<br><code>${esc(location.origin)}</code>
+        ${onGH?`<br><span style="color:var(--accent)">Note the repository name is <em>not</em> part of it. Google only accepts the bare address — no folder, no trailing slash.</span>`:''}</li>
+      <li>Enable the <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener">Google Drive API</a> for the same project.</li>
+      <li>On the OAuth consent screen, add Swati's Google account under <strong>Test users</strong> (unless the app is published).</li>
+      <li>Changes take a minute or two to reach Google's servers. Then press Connect again.</li>
+    </ol>
+    <p style="font-size:12px;color:#6E6382;margin-top:6px">A client ID is a public identifier, so it's fine sitting in this file — GitHub included. A client <em>secret</em> would not be. Never put one here.</p></div>`;
+}
+
+async function listDrive(){
+  const box=$('#dlist');if(!box)return;
+  try{
+    const folder=await resolveFolder();
+    const q=encodeURIComponent(`'${folder.id}' in parents and trashed=false`);
+    const r=await api(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime desc&fields=files(id,name,size,createdTime,webViewLink,mimeType)&pageSize=100`);
+    driveFiles=(await r.json()).files||[];
+    if(!driveFiles.length){box.innerHTML=`<div class="empty"><h3>Nothing in there yet</h3><p>Record a take and it'll appear here.</p></div>`;return;}
+    box.innerHTML=driveFiles.map(f=>`
+      <div class="take">
+        <button class="take-play" data-dplay="${f.id}" aria-label="Play ${esc(f.name)}">▶</button>
+        <div class="take-info">
+          <div class="take-name">${esc(f.name)}</div>
+          <div class="take-sub">${when(f.createdTime)} · ${kb(+f.size||0)}</div>
+        </div>
+        <a class="btn btn-sm" href="${esc(f.webViewLink)}" target="_blank" rel="noopener">Open ↗</a>
+        <button class="btn btn-sm btn-quiet" data-dren="${f.id}">Rename</button>
+        <button class="btn btn-sm btn-quiet btn-danger" data-ddel="${f.id}">Delete</button>
+      </div>`).join('');
+    box.querySelectorAll('[data-dplay]').forEach(b=>b.onclick=()=>playDrive(b));
+    box.querySelectorAll('[data-dren]').forEach(b=>b.onclick=async()=>{
+      const f=driveFiles.find(x=>x.id===b.dataset.dren);
+      const name=prompt('Rename this file in Drive',f.name);
+      if(!name||!name.trim())return;
+      await api(`https://www.googleapis.com/drive/v3/files/${f.id}`,{method:'PATCH',
+        headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name.trim()})});
+      toast('Renamed in Drive');listDrive();
+    });
+    box.querySelectorAll('[data-ddel]').forEach(b=>b.onclick=async()=>{
+      const f=driveFiles.find(x=>x.id===b.dataset.ddel);
+      if(!confirm(`Move "${f.name}" to the Drive bin?`))return;
+      await api(`https://www.googleapis.com/drive/v3/files/${f.id}`,{method:'PATCH',
+        headers:{'Content-Type':'application/json'},body:JSON.stringify({trashed:true})});
+      toast('Moved to the bin');listDrive();
+    });
+  }catch(e){ driveErr=describe(e); box.innerHTML=`<div class="notice">${esc(driveErr)}</div>`+setupHelp(); }
+}
+
+let drivePlaying=null;
+async function playDrive(btn){
+  if(drivePlaying){drivePlaying.a.pause();drivePlaying.b.textContent='▶';const was=drivePlaying.b===btn;drivePlaying=null;if(was)return;}
+  btn.innerHTML='<span class="spin"></span>';
+  try{
+    const r=await api(`https://www.googleapis.com/drive/v3/files/${btn.dataset.dplay}?alt=media`);
+    const url=URL.createObjectURL(await r.blob());
+    const a=new Audio(url);a.play();btn.textContent='❚❚';drivePlaying={a,b:btn};
+    a.onended=()=>{btn.textContent='▶';drivePlaying=null;URL.revokeObjectURL(url);};
+  }catch(e){btn.textContent='▶';toast('Could not play that one');}
+}
+
+/* ══════════════════════════════════════════════════════════
+   takes
+   ══════════════════════════════════════════════════════════ */
+/* audio may be here, or only in Drive — fetch it either way */
+async function takeURL(t){
+  if(t.url)return t.url;
+  if(!t.driveId)return null;
+  const r=await api(`https://www.googleapis.com/drive/v3/files/${t.driveId}?alt=media`);
+  t.url=URL.createObjectURL(await r.blob());
+  return t.url;
+}
+
+let nowPlaying=null;
+function renderTakes(){
+  view.innerHTML=`
+    ${takes.length?takes.map(t=>`
+      <div class="take">
+        <button class="take-play" data-play="${t.id}" aria-label="Play ${esc(t.title)}">▶</button>
+        <div class="take-info">
+          <div class="take-name">${esc(t.title)}</div>
+          <div class="take-sub"><span>${when(t.at)}</span>${t.dur?`<span>${mmss(t.dur)}</span>`:''}<span>${kb(t.size)}</span>
+            ${t.driveId?'<span class="dot-ok">● in Drive</span>':(t.saved?'':'<span>not saved — download it</span>')}</div>
+        </div>
+        ${t.driveId?'':`<button class="btn btn-sm" data-up="${t.id}">↑ To Drive</button>`}
+        <button class="btn btn-sm" data-dl="${t.id}">↓ Download</button>
+        <button class="btn btn-sm btn-quiet" data-ren="${t.id}">Rename</button>
+        <button class="btn btn-sm btn-quiet btn-danger" data-del="${t.id}">Delete</button>
+      </div>`).join('')
+    :`<div class="empty"><h3>No takes yet</h3><p>Pick a song, press the red button, and sing.</p>
+      <div style="margin-top:18px"><button class="btn btn-primary" id="gosing">Go and sing</button></div></div>`}`;
+  const g=$('#gosing');if(g)g.onclick=()=>go('stage');
+
+  view.querySelectorAll('[data-play]').forEach(b=>b.onclick=async()=>{
+    const t=takes.find(x=>x.id===b.dataset.play);
+    if(nowPlaying){nowPlaying.a.pause();nowPlaying.b.textContent='▶';const was=nowPlaying.b===b;nowPlaying=null;if(was)return;}
+    b.innerHTML='<span class="spin"></span>';
+    try{
+      const url=await takeURL(t);
+      if(!url){b.textContent='▶';toast('That audio is gone — it lived in this browser only');return;}
+      const a=new Audio(url);a.play();b.textContent='❚❚';nowPlaying={a,b};
+      a.onended=()=>{b.textContent='▶';nowPlaying=null;};
+    }catch(e){b.textContent='▶';toast('Could not load that one from Drive');}
+  });
+  view.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>uploadTake(takes.find(x=>x.id===b.dataset.up)));
+  view.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
+    const t=takes.find(x=>x.id===b.dataset.dl);
+    try{
+      const url=await takeURL(t);
+      if(!url){toast('That audio is no longer here');return;}
+      const a=document.createElement('a');a.href=url;a.download=safe(t.title)+'.'+t.ext;
+      document.body.appendChild(a);a.click();a.remove();toast('Downloaded');
+    }catch(e){toast('Could not fetch that from Drive');}
+  });
+  view.querySelectorAll('[data-ren]').forEach(b=>b.onclick=async()=>{
+    const t=takes.find(x=>x.id===b.dataset.ren);
+    const name=prompt('Name this take',t.title);
+    if(!name||!name.trim())return;
+    t.title=name.trim();await persistTakes();
+    if(t.driveId&&driveToken()){
+      try{ await api(`https://www.googleapis.com/drive/v3/files/${t.driveId}`,{method:'PATCH',
+        headers:{'Content-Type':'application/json'},body:JSON.stringify({name:safe(t.title)+'.'+t.ext})}); }catch(e){}
+    }
+    renderTakes();
+  });
+  view.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
+    const t=takes.find(x=>x.id===b.dataset.del);
+    const inDrive=t.driveId&&driveToken();
+    if(!confirm(`Delete "${t.title}"?${inDrive?'\n\nThe Drive copy goes to the bin, so it can still be recovered there.':"\n\nThis can't be undone."}`))return;
+    if(inDrive){ try{ await api(`https://www.googleapis.com/drive/v3/files/${t.driveId}`,{method:'PATCH',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({trashed:true})}); }catch(e){} }
+    takes=takes.filter(x=>x.id!==t.id);
+    await Store.del(K.blob(t.id));await persistTakes();renderTakes();toast('Take deleted');
+  });
+}
+</script>
+</body>
+</html>
