@@ -230,10 +230,6 @@ kbd{background:var(--card2);border:1px solid var(--line);border-radius:6px;paddi
 .spin{display:inline-block;width:15px;height:15px;border:2px solid var(--line);border-top-color:var(--accent);
   border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
 @keyframes sp{to{transform:rotate(360deg)}}
-.setup{font-size:13px;color:var(--muted);line-height:1.8}
-.setup li{margin-bottom:10px;margin-left:18px}
-.setup code{background:var(--card2);border:1px solid var(--line);padding:3px 8px;border-radius:6px;
-  color:var(--accent);font-size:12px;word-break:break-all;font-weight:600}
 
 @media (max-width:640px){
   .shell{padding:0 14px 90px}
@@ -1080,20 +1076,23 @@ async function uploadTake(take,quiet=false){
 }
 
 function describe(e){
-  let m=String(e.message||e);
-  // Drive replies with a JSON envelope — pull the human part out of it
-  try{ const j=JSON.parse(m); if(j.error&&j.error.message) m=j.error.message+(j.error.code?` (${j.error.code})`:''); }catch(_){}
   const raw=String(e.message||e);
-  if(m.includes('gis'))return 'The Google sign-in library did not load. Check the connection, or that nothing is blocking accounts.google.com.';
-  if(m.includes('popup')||m.includes('interaction'))return 'The sign-in window was closed or blocked. Allow pop-ups for this page and try again.';
+  let m=raw;
+  try{ const j=JSON.parse(raw); if(j.error&&j.error.message) m=j.error.message; }catch(_){}
+  // the technical detail goes to the browser console, where a developer will look
+  console.warn('[Drive]',raw);
+  if(m.includes('gis'))                       return "Google's sign-in didn't load. Check the connection and try again.";
+  if(m.includes('popup')||m.includes('interaction')) return 'The sign-in window closed before it finished. Try again.';
   if(m.includes('idpiframe')||m.includes('origin')||m.includes('invalid_client'))
-    return `This page's address isn't on the OAuth client's allowed list. Add ${location.origin} under "Authorized JavaScript origins" in Google Cloud Console.`;
+                                              return "This copy of the app isn't set up for Drive yet.";
   if(raw.includes('"location": "q"')||raw.includes('"location":"q"'))
-    return 'Drive rejected the folder search. Reload the page — if it keeps happening, use a folder name without an apostrophe.';
-  if(m.includes('accessNotConfigured')||raw.includes('has not been used'))return 'The Drive API is switched off for this Google Cloud project. Enable it, wait a minute, and try again.';
-  if(m.includes('access_denied'))return 'Google refused the sign-in. If the consent screen is still in Testing, add this Google account as a test user.';
-  if(m.includes('storageQuotaExceeded'))return 'The Drive account is out of space.';
-  return m.slice(0,320);
+                                              return "Couldn't find the folder in Drive. Reload the page and try again.";
+  if(m.includes('accessNotConfigured')||raw.includes('has not been used'))
+                                              return "Drive isn't switched on for this app yet.";
+  if(m.includes('access_denied'))             return 'Google refused the sign-in. Make sure you picked the right account.';
+  if(m.includes('storageQuotaExceeded'))      return 'That Google account is out of space.';
+  if(m.includes('401')||m.includes('403'))    return 'The connection to Drive expired. Press Connect once more.';
+  return 'Drive could not finish that. Try again in a moment.';
 }
 
 async function renderDrive(){
@@ -1118,7 +1117,12 @@ async function renderDrive(){
         ${prefs.driveLinked?`<button class="btn btn-quiet" id="unlink">Turn off auto-connect</button>`:''}
       </div>
     </div>
-    <div id="dlist">${signed?'<div style="color:var(--muted)"><span class="spin"></span> Reading your folder…</div>':setupHelp()}</div>`;
+    <div id="dlist">${signed?'<div style="color:var(--muted)"><span class="spin"></span> Reading your folder…</div>':`
+      <div class="empty">
+        <h3>Keep every song safe</h3>
+        <p>Connect once and your songbook and recordings are saved to Drive —<br>
+        ready on your phone, your laptop, anywhere you feel like singing.</p>
+      </div>`}</div>`;
 
   $('#auto').onchange=async e=>{prefs.autoUpload=e.target.checked;await Store.set(K.prefs,prefs);
     toast(prefs.autoUpload?'Takes will upload on their own':'Uploads are manual now');};
@@ -1139,22 +1143,6 @@ async function renderDrive(){
     renderDrive(); toast('Automatic connecting is off');
   };
   if(signed) listDrive();
-}
-
-function setupHelp(){
-  const onGH=location.hostname.endsWith('github.io');
-  return `<div class="panel"><div class="tool-label">If connecting doesn't work</div>
-    <ol class="setup">
-      <li>In <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud Console → Credentials</a>, open the OAuth client ending <code>…suc1am</code>.</li>
-      <li>Under <strong>Authorized JavaScript origins</strong>, add exactly this and nothing more:<br><code>${esc(location.origin)}</code>
-        ${onGH?`<br><span style="color:var(--accent)">Note the repository name is <em>not</em> part of it. Google only accepts the bare address — no folder, no trailing slash.</span>`:''}</li>
-      <li>Enable the <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener">Google Drive API</a> for the same project.</li>
-      <li>On the OAuth consent screen, add Swati's Google account under <strong>Test users</strong> (unless the app is published).</li>
-      <li>${CFG.USE_MY_FOLDER?`This build asks for full Drive access so it can write into <code>${esc(CFG.FOLDER_NAME)}</code>, the folder you made yourself. Google shows an <strong>"app isn't verified"</strong> screen for that — click <em>Advanced</em>, then <em>Go to … (unsafe)</em>. That warning is Google saying it hasn't reviewed the app, not that anything is wrong.`
-                              :`This build only touches files it creates itself, inside a folder named <code>${esc(CFG.FOLDER_NAME)}</code>.`}</li>
-      <li>Changes take a minute or two to reach Google's servers. Then press Connect again.</li>
-    </ol>
-    <p style="font-size:12px;color:#6E6382;margin-top:6px">A client ID is a public identifier, so it's fine sitting in this file — GitHub included. A client <em>secret</em> would not be. Never put one here.</p></div>`;
 }
 
 async function listDrive(){
@@ -1192,7 +1180,11 @@ async function listDrive(){
         headers:{'Content-Type':'application/json'},body:JSON.stringify({trashed:true})});
       toast('Moved to the bin');listDrive();
     });
-  }catch(e){ driveErr=describe(e); box.innerHTML=`<div class="notice">${esc(driveErr)}</div>`+setupHelp(); }
+  }catch(e){ driveErr=describe(e);
+    box.innerHTML=`<div class="notice">${esc(driveErr)}</div>
+      <div class="row"><button class="btn" id="retry">Try again</button></div>`;
+    const rb=document.querySelector('#retry'); if(rb) rb.onclick=()=>listDrive();
+  }
 }
 
 let drivePlaying=null;
