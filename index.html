@@ -277,14 +277,23 @@ kbd{background:var(--card2);border:1px solid var(--line);border-radius:6px;paddi
    ══════════════════════════════════════════════════════════ */
 const CFG = {
   CLIENT_ID : '515195793655-7es3o4fl771lbslmdvv2gmg6mnsuc1am.apps.googleusercontent.com',
+
+  /* The folder in Swati's Drive. */
   FOLDER_ID : '1KcfFLOCPqfB6L2DJbwAX0jd5oaGlJ7mp',
   FOLDER_URL: 'https://drive.google.com/drive/folders/1KcfFLOCPqfB6L2DJbwAX0jd5oaGlJ7mp?usp=drive_link',
-  // drive.file = the app only ever touches files it made. Safest.
-  // If you want takes to land inside the folder above instead of an app-made
-  // folder, swap this one line for:  'https://www.googleapis.com/auth/drive'
-  SCOPE     : 'https://www.googleapis.com/auth/drive.file',
-  FALLBACK_FOLDER: "Swati's Studio"
+  FOLDER_NAME: 'paaji_songs_audio',
+
+  /* true  → save into the folder above, the one you made by hand.
+             Needs full Drive access: the limited scope can only reach
+             folders this app created itself, so it cannot see yours.
+     false → the app makes its own folder called FOLDER_NAME and never
+             touches anything else in Drive. Safer, but a different folder. */
+  USE_MY_FOLDER: true
 };
+CFG.SCOPE = CFG.USE_MY_FOLDER
+  ? 'https://www.googleapis.com/auth/drive'        // any folder, including yours
+  : 'https://www.googleapis.com/auth/drive.file';  // only what this app creates
+CFG.FALLBACK_FOLDER = CFG.FOLDER_NAME;
 
 /* ══════════════════════════════════════════════════════════
    storage — Claude artifact (window.storage) or plain page (localStorage)
@@ -425,6 +434,11 @@ function applyTheme(){
   takes=await Store.get(K.takes)||[];
   prefs=Object.assign(prefs,await Store.get(K.prefs)||{});
   driveFolder=await Store.get(K.folder)||null;
+  /* if the access mode changed, the old permission and folder no longer apply */
+  if(prefs.driveScope && prefs.driveScope!==CFG.SCOPE){
+    driveFolder=null; await Store.del(K.folder);
+    prefs.driveLinked=false; await Store.set(K.prefs,prefs);
+  }
   for(const t of takes){ if(t.saved&&!t.url){ const d=await Store.get(K.blob(t.id)); if(d) t.url=d; } }
   applyTheme(); paintGreet(); setInterval(paintGreet,60000);
   $('#theme').onclick=async()=>{
@@ -912,6 +926,10 @@ async function api(path,opts={}){
   return r;
 }
 
+/* Drive query values are single-quoted, so any apostrophe inside one
+   (as in "Swati's Studio") must be escaped or the whole query is rejected. */
+const dq=s=>String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
 /* find a folder we're allowed to write into */
 async function resolveFolder(){
   if(driveFolder)return driveFolder;
@@ -921,10 +939,14 @@ async function resolveFolder(){
     driveFolder={id:f.id,name:f.name,configured:true};
   }catch(e){
     // drive.file can't reach a folder it didn't make — use our own instead
-    const q=encodeURIComponent(`name='${CFG.FALLBACK_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
-    const r=await api(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`);
-    const {files}=await r.json();
-    if(files&&files.length) driveFolder={id:files[0].id,name:files[0].name,configured:false};
+    let found=null;
+    try{
+      const q=encodeURIComponent(`name='${dq(CFG.FALLBACK_FOLDER)}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+      const r=await api(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`);
+      const {files}=await r.json();
+      if(files&&files.length) found=files[0];
+    }catch(e2){ /* couldn't look it up — just make a fresh one below */ }
+    if(found) driveFolder={id:found.id,name:found.name,configured:false};
     else{
       const c=await api('https://www.googleapis.com/drive/v3/files?fields=id,name',{
         method:'POST',headers:{'Content-Type':'application/json'},
@@ -932,6 +954,7 @@ async function resolveFolder(){
       const f=await c.json();driveFolder={id:f.id,name:f.name,configured:false};
     }
   }
+  driveFolder.forScope=CFG.SCOPE;
   await Store.set(K.folder,driveFolder);
   return driveFolder;
 }
@@ -946,7 +969,7 @@ const queuePush=()=>{ if(!driveToken())return; clearTimeout(pushTimer); pushTime
 async function findLib(){
   if(libId)return libId;
   const folder=await resolveFolder();
-  const q=encodeURIComponent(`'${folder.id}' in parents and name='${LIB_NAME}' and trashed=false`);
+  const q=encodeURIComponent(`'${dq(folder.id)}' in parents and name='${dq(LIB_NAME)}' and trashed=false`);
   const r=await api(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`);
   const {files}=await r.json();
   libId=files&&files.length?files[0].id:null;
@@ -1057,12 +1080,17 @@ async function uploadTake(take,quiet=false){
 }
 
 function describe(e){
-  const m=String(e.message||e);
+  let m=String(e.message||e);
+  // Drive replies with a JSON envelope — pull the human part out of it
+  try{ const j=JSON.parse(m); if(j.error&&j.error.message) m=j.error.message+(j.error.code?` (${j.error.code})`:''); }catch(_){}
+  const raw=String(e.message||e);
   if(m.includes('gis'))return 'The Google sign-in library did not load. Check the connection, or that nothing is blocking accounts.google.com.';
   if(m.includes('popup')||m.includes('interaction'))return 'The sign-in window was closed or blocked. Allow pop-ups for this page and try again.';
   if(m.includes('idpiframe')||m.includes('origin')||m.includes('invalid_client'))
     return `This page's address isn't on the OAuth client's allowed list. Add ${location.origin} under "Authorized JavaScript origins" in Google Cloud Console.`;
-  if(m.includes('accessNotConfigured')||m.includes('has not been used'))return 'The Drive API is switched off for this Google Cloud project. Enable it, wait a minute, and try again.';
+  if(raw.includes('"location": "q"')||raw.includes('"location":"q"'))
+    return 'Drive rejected the folder search. Reload the page — if it keeps happening, use a folder name without an apostrophe.';
+  if(m.includes('accessNotConfigured')||raw.includes('has not been used'))return 'The Drive API is switched off for this Google Cloud project. Enable it, wait a minute, and try again.';
   if(m.includes('access_denied'))return 'Google refused the sign-in. If the consent screen is still in Testing, add this Google account as a test user.';
   if(m.includes('storageQuotaExceeded'))return 'The Drive account is out of space.';
   return m.slice(0,320);
@@ -1078,7 +1106,7 @@ async function renderDrive(){
           <div class="tool-label">Google Drive</div>
           <div style="font-family:var(--display);font-size:20px">${signed?'Connected':(prefs.driveLinked?'Reconnecting…':'Not connected yet')}</div>
           <p style="font-size:13px;color:var(--muted);margin-top:4px">
-            ${signed?`Songbook and recordings live in <strong style="color:var(--accent)">${esc(driveFolder?.name||'…')}</strong>.
+            ${signed?`Songbook and recordings live in <strong style="color:var(--accent)">${esc(driveFolder?.name||'…')}</strong>${driveFolder&&!driveFolder.configured?' <span style="color:var(--live)">(a folder the app made — not the one you linked)</span>':''}.
                       ${lastSync?'Last synced '+new Date(lastSync).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})+'.':''}
                       Signs in on its own from now on.`
                     :'Sign in once. After that it connects by itself, and your songbook follows you to any device.'}</p>
@@ -1098,7 +1126,7 @@ async function renderDrive(){
     driveErr=null;
     try{
       await connectDrive(true); await resolveFolder();
-      prefs.driveLinked=true; await Store.set(K.prefs,prefs);
+      prefs.driveLinked=true; prefs.driveScope=CFG.SCOPE; await Store.set(K.prefs,prefs);
       scheduleRenew(); renderDrive(); toast('Drive connected');
       await syncAll(false);
     }catch(e){ driveErr=describe(e); renderDrive(); }
@@ -1122,6 +1150,8 @@ function setupHelp(){
         ${onGH?`<br><span style="color:var(--accent)">Note the repository name is <em>not</em> part of it. Google only accepts the bare address — no folder, no trailing slash.</span>`:''}</li>
       <li>Enable the <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener">Google Drive API</a> for the same project.</li>
       <li>On the OAuth consent screen, add Swati's Google account under <strong>Test users</strong> (unless the app is published).</li>
+      <li>${CFG.USE_MY_FOLDER?`This build asks for full Drive access so it can write into <code>${esc(CFG.FOLDER_NAME)}</code>, the folder you made yourself. Google shows an <strong>"app isn't verified"</strong> screen for that — click <em>Advanced</em>, then <em>Go to … (unsafe)</em>. That warning is Google saying it hasn't reviewed the app, not that anything is wrong.`
+                              :`This build only touches files it creates itself, inside a folder named <code>${esc(CFG.FOLDER_NAME)}</code>.`}</li>
       <li>Changes take a minute or two to reach Google's servers. Then press Connect again.</li>
     </ol>
     <p style="font-size:12px;color:#6E6382;margin-top:6px">A client ID is a public identifier, so it's fine sitting in this file — GitHub included. A client <em>secret</em> would not be. Never put one here.</p></div>`;
