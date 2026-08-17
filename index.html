@@ -793,7 +793,7 @@ function drawTrackSlot(){
     };
     $('#tclear').onclick=()=>{trackEl.pause();trackEl.removeAttribute('src');trackName=null;drawTrackSlot();};
   }else{
-    slot.innerHTML=`<button class="file-drop" id="tpick">＋ Add an instrumental or karaoke track</button>
+    slot.innerHTML=`<button class="file-drop" id="tpick">＋ Add an instrumental </button>
       <input type="file" id="tfile" accept="audio/*" hidden>`;
     $('#tpick').onclick=()=>$('#tfile').click();
     $('#tfile').onchange=e=>{
