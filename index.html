@@ -369,11 +369,14 @@ const Vault = {
   async used(){ try{ return await navigator.storage.estimate(); }catch(e){ return null; } }
 };
 
-/* ── the bucket, reached through the Worker ── */
+/* ── the bucket, reached through the Worker ──
+   The address and key live in CFG above, so every device that opens this
+   page is already signed in. Anything typed into Settings only takes over
+   once someone deliberately saves it there (prefs.cloudCustom). ── */
 const LIB_PATH='library/songbook.json';
 const Cloud = {
-  get URL(){ return String(prefs.cloudURL||CFG.WORKER_URL||'').replace(/\/+$/,''); },
-  get KEY(){ return prefs.cloudKey||CFG.STUDIO_KEY||''; },
+  get URL(){ return String((prefs.cloudCustom&&prefs.cloudURL)||CFG.WORKER_URL||prefs.cloudURL||'').replace(/\/+$/,''); },
+  get KEY(){ return (prefs.cloudCustom&&prefs.cloudKey)||CFG.STUDIO_KEY||prefs.cloudKey||''; },
   get on(){ return !!(this.URL&&this.KEY); },
   head(extra={}){ return {'X-Studio-Key':this.KEY,...extra}; },
   async up(name,blob,keepalive=false){
@@ -548,9 +551,12 @@ function applyTheme(){
 
   if(!Array.isArray(prefs.gone)) prefs.gone=[];
   /* the address and key are in the file, so the studio is connected the
-     moment it opens — nothing to type in, on any device */
-  if(!prefs.cloudURL&&CFG.WORKER_URL) prefs.cloudURL=CFG.WORKER_URL;
-  if(!prefs.cloudKey&&CFG.STUDIO_KEY) prefs.cloudKey=CFG.STUDIO_KEY;
+     moment it opens — nothing to type in, on any device. An old value
+     left in this phone's settings is cleared out unless it was saved
+     there on purpose. */
+  if(CFG.WORKER_URL&&CFG.STUDIO_KEY&&!prefs.cloudCustom){
+    prefs.cloudURL=CFG.WORKER_URL; prefs.cloudKey=CFG.STUDIO_KEY;
+  }
   await Store.set(K.prefs,prefs);
 
   applyTheme(); paintGreet(); setInterval(paintGreet,60000);
@@ -1211,10 +1217,16 @@ async function openSettings(){
     <div class="set-row" style="display:block">
       <details>
         <summary style="cursor:pointer;font-size:12.5px;color:var(--muted)">Change the address or key</summary>
-        <div class="stack" style="margin-top:12px">
-          <input class="field" id="c-url" placeholder="https://studio-store.yourname.workers.dev" value="${esc(prefs.cloudURL||CFG.WORKER_URL||'')}">
-          <input class="field" id="c-key" type="password" placeholder="studio key" value="${esc(prefs.cloudKey||CFG.STUDIO_KEY||'')}">
+        <div class="set-note" style="margin:10px 0">
+          ${prefs.cloudCustom
+            ? 'This device is using an address typed in here, not the one built into the app.'
+            : 'Nothing needs to go in here — the app carries its own address and key. Only fill these in to point this one device somewhere else.'}
+        </div>
+        <div class="stack">
+          <input class="field" id="c-url" placeholder="https://studio-store.yourname.workers.dev" value="${esc(Cloud.URL)}">
+          <input class="field" id="c-key" type="password" placeholder="studio key" value="${esc(Cloud.KEY)}">
           <div class="row" style="justify-content:flex-end">
+            ${prefs.cloudCustom?'<button class="btn btn-quiet" id="c-reset">Use the built-in one</button>':''}
             <button class="btn btn-primary" id="c-save">Save &amp; test</button>
           </div>
         </div>
@@ -1246,9 +1258,16 @@ async function openSettings(){
     prefs.autoUpload=e.target.checked; await Store.set(K.prefs,prefs);
     toast(prefs.autoUpload?'Takes will upload on their own':'Uploading is manual now');
   };
+  const rs=$('#c-reset');
+  if(rs) rs.onclick=async()=>{
+    prefs.cloudCustom=false; prefs.cloudURL=CFG.WORKER_URL; prefs.cloudKey=CFG.STUDIO_KEY;
+    await Store.set(K.prefs,prefs); cloudErr=null;
+    toast('Back to the built-in storage'); openSettings(); syncCloud(false);
+  };
   $('#c-save').onclick=async()=>{
-    prefs.cloudURL=$('#c-url').value.trim();
-    prefs.cloudKey=$('#c-key').value.trim();
+    const u=$('#c-url').value.trim(), k=$('#c-key').value.trim();
+    prefs.cloudCustom = !!(u&&k) && (u!==CFG.WORKER_URL||k!==CFG.STUDIO_KEY);
+    prefs.cloudURL=u; prefs.cloudKey=k;
     await Store.set(K.prefs,prefs);
     cloudErr=null;
     if(!Cloud.on){ toast('Both boxes are needed'); return; }
