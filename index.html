@@ -292,20 +292,44 @@ kbd{background:var(--card2);border:1px solid var(--line);border-radius:6px;paddi
       them into Settings on the phone itself — either works.
    ══════════════════════════════════════════════════════════ */
 const CFG = {
-  WORKER_URL: '',    // e.g. https://studio-store.yourname.workers.dev
-  STUDIO_KEY: ''     // the same STUDIO_KEY secret you set on the Worker
+  WORKER_URL: 'https://studio-store.panwarpranjal2610.workers.dev',
+  STUDIO_KEY: 'c1dc335251b4e7534af548cebade8595be0811d8276d64f1'
 };
 
-/* ── settings + song list: small JSON, stays in this browser ── */
+/* ── settings + song list ──
+   Written twice on purpose: once to localStorage (fast) and once to
+   IndexedDB (survives a browser tidy-up that wipes localStorage).
+   Whichever one still has the songs after a reload is the one used. */
 const Store = {
   widget: !!(typeof window!=='undefined' && window.storage && window.storage.get),
-  async get(k){ if(this.widget){ try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch(e){return null;} }
-                try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;} },
-  async set(k,v){ const s=JSON.stringify(v);
-                if(this.widget){ try{await window.storage.set(k,s);return true;}catch(e){return false;} }
-                try{localStorage.setItem(k,s);return true;}catch(e){return false;} },
-  async del(k){ if(this.widget){ try{await window.storage.delete(k);}catch(e){} return; }
-                try{localStorage.removeItem(k);}catch(e){} }
+  mem:{},
+  async get(k){
+    if(this.widget){ try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch(e){return null;} }
+    let a=null,b=null;
+    try{ const v=localStorage.getItem(k); if(v) a=JSON.parse(v); }catch(e){}
+    try{ const v=await Vault.metaGet(k);  if(v) b=JSON.parse(v); }catch(e){}
+    if(a==null){
+      if(b==null) return this.mem[k]??null;
+      try{ localStorage.setItem(k,JSON.stringify(b)); }catch(e){}   /* put the fast copy back */
+      return b;
+    }
+    if(b==null) return a;
+    /* both there — take the longer list, never lose a song to a stale copy */
+    if(Array.isArray(a)&&Array.isArray(b)&&b.length>a.length) return b;
+    return a;
+  },
+  async set(k,v){
+    const s=JSON.stringify(v); this.mem[k]=v;
+    if(this.widget){ try{await window.storage.set(k,s);return true;}catch(e){return false;} }
+    let ok=false;
+    try{ localStorage.setItem(k,s); ok=true; }catch(e){ console.warn('localStorage full or blocked',e); }
+    try{ await Vault.metaPut(k,s); ok=true; }catch(e){}
+    return ok;
+  },
+  async del(k){ delete this.mem[k];
+    if(this.widget){ try{await window.storage.delete(k);}catch(e){} return; }
+    try{localStorage.removeItem(k);}catch(e){}
+    try{await Vault.metaDel(k);}catch(e){} }
 };
 const K={songs:'swati:songs',takes:'swati:takes',prefs:'swati:prefs'};
 
@@ -315,18 +339,22 @@ const Vault = {
   async open(){
     if(this.db) return this.db;
     this.db = await new Promise((res,rej)=>{
-      const r=indexedDB.open('swati-studio',1);
-      r.onupgradeneeded=()=>r.result.createObjectStore('audio');
+      const r=indexedDB.open('swati-studio',2);
+      r.onupgradeneeded=()=>{
+        const db=r.result;
+        if(!db.objectStoreNames.contains('audio')) db.createObjectStore('audio');
+        if(!db.objectStoreNames.contains('meta'))  db.createObjectStore('meta');
+      };
       r.onsuccess=()=>res(r.result);
       r.onerror=()=>rej(r.error);
     });
     return this.db;
   },
-  async tx(mode,fn){
+  async tx(mode,fn,store='audio'){
     const db=await this.open();
     return new Promise((res,rej)=>{
-      const t=db.transaction('audio',mode);
-      const q=fn(t.objectStore('audio'));
+      const t=db.transaction(store,mode);
+      const q=fn(t.objectStore(store));
       q.onsuccess=()=>res(q.result);
       q.onerror=()=>rej(q.error);
     });
@@ -334,6 +362,9 @@ const Vault = {
   put(id,blob){ return this.tx('readwrite',s=>s.put(blob,id)); },
   get(id){      return this.tx('readonly', s=>s.get(id)); },
   del(id){      return this.tx('readwrite',s=>s.delete(id)); },
+  metaPut(k,s){ return this.tx('readwrite',st=>st.put(s,k),'meta'); },
+  metaGet(k){   return this.tx('readonly', st=>st.get(k),'meta'); },
+  metaDel(k){   return this.tx('readwrite',st=>st.delete(k),'meta'); },
   async keep(){ try{ if(navigator.storage?.persist) await navigator.storage.persist(); }catch(e){} },
   async used(){ try{ return await navigator.storage.estimate(); }catch(e){ return null; } }
 };
@@ -345,8 +376,8 @@ const Cloud = {
   get KEY(){ return prefs.cloudKey||CFG.STUDIO_KEY||''; },
   get on(){ return !!(this.URL&&this.KEY); },
   head(extra={}){ return {'X-Studio-Key':this.KEY,...extra}; },
-  async up(name,blob){
-    const r=await fetch(this.URL+'/upload',{method:'POST',
+  async up(name,blob,keepalive=false){
+    const r=await fetch(this.URL+'/upload',{method:'POST',keepalive,
       headers:this.head({'X-File-Name':encodeURIComponent(name),'Content-Type':blob.type||'audio/webm'}),
       body:blob});
     if(!r.ok) throw new Error(await r.text());
@@ -370,8 +401,14 @@ const Cloud = {
   }
 };
 
-let songs=[],takes=[],prefs={size:34,speed:34,autoUpload:true,offset:0,cloudURL:'',cloudKey:''},
+let songs=[],takes=[],prefs={size:34,speed:34,autoUpload:true,offset:0,cloudURL:'',cloudKey:'',gone:[],libDirty:false},
     room='songbook',currentId=null,toastTimer=null,cloudErr=null,syncing=false;
+
+/* ── singing with no song open ── */
+const FREE_ID='__freestyle__';
+const FREE_SONG={id:FREE_ID,title:'Freestyle',artist:'बिना बोल — बस आवाज़',lyrics:'',synced:null};
+const isFree=()=>currentId===FREE_ID;
+const songNow=()=>isFree()?FREE_SONG:songs.find(x=>x.id===currentId);
 
 const $=s=>document.querySelector(s);
 const view=$('#view');
@@ -509,6 +546,13 @@ function applyTheme(){
     try{ const b=await Vault.get(t.id); if(b){ t.url=URL.createObjectURL(b); t.saved=true; } }catch(e){}
   }
 
+  if(!Array.isArray(prefs.gone)) prefs.gone=[];
+  /* the address and key are in the file, so the studio is connected the
+     moment it opens — nothing to type in, on any device */
+  if(!prefs.cloudURL&&CFG.WORKER_URL) prefs.cloudURL=CFG.WORKER_URL;
+  if(!prefs.cloudKey&&CFG.STUDIO_KEY) prefs.cloudKey=CFG.STUDIO_KEY;
+  await Store.set(K.prefs,prefs);
+
   applyTheme(); paintGreet(); setInterval(paintGreet,60000);
   $('#theme').onclick=async()=>{
     prefs.theme = prefs.theme==='evening' ? 'day' : 'evening';
@@ -521,11 +565,39 @@ function applyTheme(){
   if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
   }
-  if(Cloud.on) syncCloud(false);
+
+  /* anything that didn't make it up last time goes up now */
+  if(Cloud.on){
+    if(navigator.onLine!==false) syncCloud(false);
+    catchUp();
+  }
+  /* the signal comes back → try again on its own */
+  window.addEventListener('online',()=>{ if(Cloud.on){ syncCloud(false); catchUp(); } });
+  /* closing the tab, or switching away → push whatever is still unsaved */
+  const flush=()=>{ if(prefs.libDirty&&Cloud.on) pushLibrary(true); };
+  window.addEventListener('pagehide',flush);
+  document.addEventListener('visibilitychange',()=>{ if(document.hidden) flush(); });
+  /* a quiet top-up every few minutes, so a second device stays level */
+  setInterval(()=>{ if(Cloud.on&&navigator.onLine!==false&&!live) syncCloud(false); },5*60*1000);
 })();
 
+/* takes that are on the phone but never reached the bucket, and a
+   songbook that was edited with no signal */
+async function catchUp(){
+  if(!Cloud.on)return;
+  if(prefs.libDirty) await pushLibrary();
+  if(!prefs.autoUpload)return;
+  for(const t of takes.filter(t=>!t.cloudPath&&t.saved)){
+    let ok=false;
+    try{ ok=await cloudUp(t,true); }catch(e){}
+    if(!ok) break;
+  }
+}
+
 function go(r){
-  if(r==='stage'&&!currentId){ if(!songs.length){ toast('Find a song first'); lyricFinder(); return; } currentId=songs[0].id; }
+  /* Sing always opens. With nothing chosen it opens on a blank stage —
+     the mic works straight away, words can come later. */
+  if(r==='stage'&&!currentId) currentId=FREE_ID;
   room=r;render();
 }
 function render(){
@@ -546,7 +618,8 @@ function renderSongbook(){
     <div class="row" style="gap:12px">
       <div class="search-wrap"><span class="search-ico">⌕</span>
         <input class="field" id="q" placeholder="Search the songs you've saved" value="${esc(query)}"></div>
-      <button class="btn btn-primary" id="find">⌕ Find a song online</button>
+      <button class="btn btn-primary" id="sing-now">♬ Just sing</button>
+      <button class="btn" id="find">⌕ Find a song online</button>
       <button class="btn" id="add">＋ Type it in</button>
     </div>
     ${list.length?`<div class="shelf">${list.map((s,i)=>`
@@ -567,14 +640,18 @@ function renderSongbook(){
       <button class="card card-add" id="find2">＋ Find another song</button></div>`
     :`<div class="empty">
         <h3>${query?'Nothing saved by that name':'Your songbook is empty'}</h3>
-        <p>${query?'Try another word, or search online for it.':'Search for a song and the lyrics come down with it — timed to the music where they exist.'}</p>
-        <div style="margin-top:18px"><button class="btn btn-primary" id="find3">⌕ Find a song online</button></div>
+        <p>${query?'Try another word, or search online for it.':'Search for a song and the lyrics come down with it — timed to the music where they exist. Or open the mic straight away and add the words later.'}</p>
+        <div class="row" style="margin-top:18px;justify-content:center">
+          <button class="btn btn-primary" id="sing-now2">♬ Just sing</button>
+          <button class="btn" id="find3">⌕ Find a song online</button>
+        </div>
       </div>`}`;
   const hn=$('#hnew');
   if(hn) hn.onclick=()=>{nextHausla();paintHausla();};
   const q=$('#q');
   q.oninput=e=>{query=e.target.value;const p=e.target.selectionStart;renderSongbook();const n=$('#q');n.focus();n.setSelectionRange(p,p);};
   ['#find','#find2','#find3'].forEach(i=>{const b=$(i);if(b)b.onclick=()=>lyricFinder();});
+  ['#sing-now','#sing-now2'].forEach(i=>{const b=$(i);if(b)b.onclick=()=>{currentId=FREE_ID;room='stage';render();};});
   const a=$('#add'); if(a) a.onclick=()=>editor(null);
   view.querySelectorAll('[data-open]').forEach(c=>c.onclick=()=>{currentId=c.dataset.open;room='stage';render();});
   view.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editor(b.dataset.edit));
@@ -587,8 +664,9 @@ async function removeSong(id){
   const warn=n?`\n\nThe ${n} recorded take${n>1?'s':''} of it will stay in My takes.`:'';
   if(!confirm(`Remove "${s.title}" from the songbook?${warn}`)) return;
   songs=songs.filter(x=>x.id!==id);
+  prefs.gone=[...new Set([...(prefs.gone||[]),id])].slice(-200);
   await saveSongs();
-  if(currentId===id) currentId=songs[0]?.id||null;
+  if(currentId===id) currentId=songs[0]?.id||FREE_ID;
   room='songbook'; render();
   toast(`"${s.title}" removed`);
 }
@@ -605,6 +683,7 @@ function lyricFinder(){
     </div>
     <div id="lres" style="margin-top:18px"></div>
     <div class="row" style="margin-top:20px;justify-content:flex-end">
+      <button class="btn btn-quiet" id="lfree">♬ Just sing instead</button>
       <button class="btn btn-quiet" id="ltype">Type the lyrics myself</button>
       <button class="btn" id="lclose">Close</button>
     </div>
@@ -614,6 +693,7 @@ function lyricFinder(){
   veil.onclick=e=>{if(e.target===veil)close();};
   $('#lclose').onclick=close;
   $('#ltype').onclick=()=>{close();editor(null);};
+  $('#lfree').onclick=()=>{close();currentId=FREE_ID;room='stage';render();};
   $('#lq').focus();
   $('#lq').onkeydown=e=>{if(e.key==='Enter')run();};
   $('#lgo').onclick=run;
@@ -651,15 +731,15 @@ function lyricFinder(){
   }
 }
 
-function editor(id){
+function editor(id,opts={}){
   const s=id?songs.find(x=>x.id===id):null;
   const veil=document.createElement('div');veil.className='veil';
   veil.innerHTML=`<div class="sheet" role="dialog" aria-modal="true">
-    <h2>${s?'Edit song':'Type in a song'}</h2>
+    <h2>${s?'Edit song':(opts.linkTake?'Add this to the songbook':'Type in a song')}</h2>
     <p class="sub">One line per line — that's exactly how it scrolls while you sing.</p>
     <div class="stack">
-      <input class="field" id="f-title" placeholder="Song name" value="${esc(s?.title||'')}">
-      <input class="field" id="f-artist" placeholder="Singer or film (optional)" value="${esc(s?.artist||'')}">
+      <input class="field" id="f-title" placeholder="Song name" value="${esc(s?.title||opts.title||'')}">
+      <input class="field" id="f-artist" placeholder="Singer or film (optional)" value="${esc(s?.artist||opts.artist||'')}">
       <textarea class="field" id="f-lyrics" placeholder="Paste or type the lyrics here…">${esc(s?.lyrics||'')}</textarea>
       ${s&&s.synced?`<p style="font-size:12px;color:var(--muted)">This song has timings attached. Editing the words here keeps them, but the timings stay as they were.</p>`:''}
       <div class="row" style="justify-content:flex-end;margin-top:6px">
@@ -679,8 +759,15 @@ function editor(id){
     if(!title){toast('Give the song a name');return;}
     if(!lyrics.trim()){toast('The lyrics can\'t be empty');return;}
     if(s)Object.assign(s,{title,artist,lyrics,updated:Date.now()});
-    else{const n={id:uid(),title,artist,lyrics,synced:null,createdAt:Date.now(),updated:Date.now()};songs.unshift(n);currentId=n.id;}
-    await saveSongs();close();render();toast(s?'Saved':'Added to your songbook');
+    else{
+      const n={id:uid(),title,artist,lyrics,synced:null,createdAt:Date.now(),updated:Date.now()};
+      songs.unshift(n);
+      if(opts.linkTake){ opts.linkTake.songId=n.id; await persistTakes(); }
+      else currentId=n.id;
+      if(opts.stayOnStage){ currentId=n.id; room='stage'; }
+    }
+    await saveSongs();close();render();
+    toast(s?'Saved':'Added to your songbook — it stays there');
   };
 }
 
@@ -694,31 +781,36 @@ const trackEl=new Audio();trackEl.preload='auto';
 let trackName=null;
 
 function renderStage(){
-  const s=songs.find(x=>x.id===currentId);
-  if(!s){room='songbook';renderSongbook();return;}
-  const sync=s.synced&&s.synced.length?s.synced:null;
-  const lines=sync?sync.map(l=>l.text):s.lyrics.split('\n');
+  if(currentId&&currentId!==FREE_ID&&!songs.find(x=>x.id===currentId)) currentId=FREE_ID;
+  if(!currentId) currentId=FREE_ID;
+  const free=isFree();
+  const s=songNow();
+  const sync=!free&&s.synced&&s.synced.length?s.synced:null;
+  const lines=free?[]:(sync?sync.map(l=>l.text):s.lyrics.split('\n'));
 
   view.innerHTML=`
     <div class="stage-head">
       <div>
-        <div class="eyebrow">now singing</div>
-        <h1 class="stage-title">${esc(s.title)}</h1>
-        <div class="stage-artist">${esc(s.artist||'')}</div>
+        <div class="eyebrow">${free?'the mic is open':'now singing'}</div>
+        <h1 class="stage-title">${free?'बस गाओ':esc(s.title)}</h1>
+        <div class="stage-artist">${free?'No song needed — press the red button':esc(s.artist||'')}</div>
       </div>
       <div class="row">
         <select class="field" id="pick" style="width:auto;max-width:200px">
-          ${songs.map(x=>`<option value="${x.id}" ${x.id===s.id?'selected':''}>${esc(x.title)}</option>`).join('')}
+          <option value="${FREE_ID}" ${free?'selected':''}>✿ Just sing (no words)</option>
+          ${songs.map(x=>`<option value="${x.id}" ${!free&&x.id===s.id?'selected':''}>${esc(x.title)}</option>`).join('')}
         </select>
-        <button class="btn btn-quiet" id="edit">Edit lyrics</button>
+        <button class="btn btn-quiet" id="edit">${free?'＋ Add words':'Edit lyrics'}</button>
       </div>
     </div>
     <div id="mic-note"></div>
     <div class="lamp-stage">
       <div class="lamp-beam" aria-hidden="true"></div>
       <div class="lamp-glow" aria-hidden="true"></div>
-      <div class="scroller" id="scroller" tabindex="0" aria-label="Lyrics">
-        ${lines.map((l,i)=>l.trim()
+      <div class="scroller" id="scroller" tabindex="0" aria-label="${free?'Open mic':'Lyrics'}">
+        ${free?`<div class="lyric is-lit" style="cursor:default">✿</div>
+                <div class="lyric" style="cursor:default" lang="hi">${esc(shortHausla())}</div>`
+              :lines.map((l,i)=>l.trim()
           ?`<div class="lyric" data-i="${i}"${sync?` data-t="${sync[i].t}"`:''}>${esc(l)}</div>`
           :`<div class="lyric is-blank" data-i="${i}">&nbsp;</div>`).join('')}
       </div>
@@ -726,14 +818,16 @@ function renderStage(){
         <button class="rec-btn" id="rec" aria-label="Start recording"><span class="glyph"></span></button>
         <div class="clock" id="clock">00:00</div>
         <div class="meter" id="meter">${'<i></i>'.repeat(7)}</div>
-        ${sync?`<label class="switch"><input type="checkbox" id="follow" ${following?'checked':''}><span>Follow the music</span></label>`
+        ${free?'':sync?`<label class="switch"><input type="checkbox" id="follow" ${following?'checked':''}><span>Follow the music</span></label>`
               :`<button class="btn" id="roll">▶ Scroll</button>`}
         <span class="spacer"></span>
-        ${sync?`<div class="ctrl"><span>Nudge</span><input type="range" id="offset" min="-5" max="5" step="0.1" value="${prefs.offset}" aria-label="Timing nudge"></div>`
+        ${free?'':sync?`<div class="ctrl"><span>Nudge</span><input type="range" id="offset" min="-5" max="5" step="0.1" value="${prefs.offset}" aria-label="Timing nudge"></div>`
               :`<div class="ctrl"><span>Speed</span><input type="range" id="speed" min="6" max="90" value="${prefs.speed}" aria-label="Scroll speed"></div>`}
         <div class="ctrl"><span>Text</span><input type="range" id="size" min="20" max="60" value="${prefs.size}" aria-label="Text size"></div>
       </div>
-      <div class="hint">${sync
+      <div class="hint">${free
+        ? `<kbd>R</kbd> or the red button starts. Every take is kept — the words can be added to the songbook whenever you like.`
+        : sync
         ? `The lyrics move on their own once the music plays. <kbd>R</kbd> records · nudge the timing if the words run early or late.`
         : `<kbd>Space</kbd> scroll on/off · <kbd>R</kbd> record · tap any line to bring it under the lamp`}</div>
     </div>
@@ -752,7 +846,7 @@ function renderStage(){
     </div>`;
 
   $('#pick').onchange=e=>{currentId=e.target.value;stopFollow();render();};
-  $('#edit').onclick=()=>editor(s.id);
+  $('#edit').onclick=()=>free?editor(null,{stayOnStage:true}):editor(s.id);
   const scroller=$('#scroller');
   const applySize=v=>{prefs.size=+v;scroller.querySelectorAll('.lyric').forEach(l=>l.style.fontSize=v+'px');relight();Store.set(K.prefs,prefs);};
   applySize(prefs.size);
@@ -779,7 +873,7 @@ function renderStage(){
   document.onkeydown=e=>{
     if(room!=='stage')return;
     if(/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName))return;
-    if(e.code==='Space'&&!sync){e.preventDefault();scrolling?stopScroll():startScroll();}
+    if(e.code==='Space'&&!sync&&!free){e.preventDefault();scrolling?stopScroll():startScroll();}
     if(e.key==='r'||e.key==='R'){e.preventDefault();live?stopRec():startRec();}
   };
 }
@@ -928,8 +1022,9 @@ async function startRec(){
   const b=$('#rec'),c=$('#clock');
   b.classList.add('is-live');b.setAttribute('aria-label','Stop recording');c.classList.add('is-live');
   recTimer=setInterval(()=>{c.textContent=mmss((Date.now()-recStart)/1000);},200);
-  const s=songs.find(x=>x.id===currentId);
-  if(s&&s.synced&&s.synced.length){ const f=$('#follow'); if(f&&!f.checked){f.checked=true;} if(!following)startFollow(); }
+  const s=songNow();
+  if(isFree()){ /* nothing to scroll — just the voice */ }
+  else if(s&&s.synced&&s.synced.length){ const f=$('#follow'); if(f&&!f.checked){f.checked=true;} if(!following)startFollow(); }
   else if(!scrolling) startScroll();
 }
 function stopRec(){if(recorder&&recorder.state!=='inactive')recorder.stop();}
@@ -943,9 +1038,11 @@ async function finishRec(){
   const blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});
   const dur=(Date.now()-recStart)/1000;
   if(blob.size<2000||dur<1){toast('That take was too short to keep');return;}
-  const song=songs.find(x=>x.id===currentId);
-  const n=takes.filter(t=>t.songId===currentId).length+1;
-  const take={id:uid(),songId:currentId,title:`${song.title} — take ${n}`,at:Date.now(),
+  const free=isFree();
+  const song=songNow()||FREE_SONG;
+  const n=takes.filter(t=>free?!t.songId:t.songId===currentId).length+1;
+  const take={id:uid(),songId:free?null:currentId,
+    title:free?`Riyaz — take ${n}`:`${song.title} — take ${n}`,at:Date.now(),
     dur:Math.round(dur),size:blob.size,mime:blob.type,
     ext:(blob.type.includes('mp4')?'m4a':'webm'),url:URL.createObjectURL(blob),
     saved:false,cloudPath:null,cloudFileId:null};
@@ -983,29 +1080,49 @@ async function cloudUp(take,quiet=false){
     await persistTakes();
     toast('Saved to your bucket');
     if(room==='takes') renderTakes();
+    return true;
   }catch(e){
     cloudErr=friendly(e);
     toast('Could not upload — the take is still on this device');
+    return false;
   }
 }
 
 /* the songbook travels as one small JSON file, so a second device sees it */
 let pushTimer=null;
-async function saveSongs(){ await Store.set(K.songs,songs); queuePush(); }
+/* the songbook is written to this device first — that copy is there the
+   instant the button is pressed, refresh or no refresh — and the bucket
+   copy follows a second later */
+async function saveSongs(){
+  prefs.libDirty=true;
+  await Store.set(K.songs,songs);
+  await Store.set(K.prefs,prefs);
+  queuePush();
+}
 function queuePush(){
   if(!Cloud.on)return;
   clearTimeout(pushTimer);
-  pushTimer=setTimeout(()=>pushLibrary(),2500);
+  pushTimer=setTimeout(()=>pushLibrary(),900);
 }
-async function pushLibrary(){
+async function pushLibrary(keepalive=false){
   if(!Cloud.on)return;
   try{
-    await Cloud.up(LIB_PATH,new Blob([JSON.stringify({v:1,savedAt:Date.now(),songs})],{type:'application/json'}));
-  }catch(e){ console.warn('library push',e); }
+    await Cloud.up(LIB_PATH,new Blob([JSON.stringify(
+      {v:1,savedAt:Date.now(),songs,gone:prefs.gone||[]})],{type:'application/json'}),keepalive);
+    prefs.libDirty=false; await Store.set(K.prefs,prefs);
+  }catch(e){ console.warn('library push',e); }   /* stays dirty, tried again later */
 }
-function mergeSongs(list){
+function mergeSongs(list,goneThere){
   let added=0;
+  const gone=new Set([...(prefs.gone||[]),...(goneThere||[])]);
+  if(goneThere&&goneThere.length){
+    prefs.gone=[...gone];
+    const before=songs.length;
+    songs=songs.filter(s=>!gone.has(s.id));            /* removed on the other device */
+    if(songs.length!==before) prefs.libDirty=true;
+  }
   for(const cs of list||[]){
+    if(gone.has(cs.id)) continue;
     const mine=songs.find(x=>x.id===cs.id);
     if(!mine){ songs.push(cs); added++; }
     else if((cs.updated||0)>(mine.updated||0)) Object.assign(mine,cs);
@@ -1025,7 +1142,7 @@ async function syncCloud(loud=false){
     if(files.some(f=>f.fileName===LIB_PATH)){
       try{
         const j=JSON.parse(await (await Cloud.down(LIB_PATH)).text());
-        songsAdded=mergeSongs(j.songs);
+        songsAdded=mergeSongs(j.songs,j.gone);
       }catch(e){ console.warn('library pull',e); }
     }
 
@@ -1080,17 +1197,28 @@ async function openSettings(){
     </div>
 
     <div class="tool-label" style="margin-top:20px">Backblaze bucket</div>
+    <div class="set-row">
+      <div class="set-main">
+        <div class="set-title">${Cloud.on?'Connected on its own':'Not connected'}</div>
+        <div class="set-note">${Cloud.on
+          ? `The address and key are already inside the app, so it signs in every time it opens — nothing to type.
+             ${inCloud?`<strong>${inCloud}</strong> take${inCloud===1?'':'s'} are up there now.`:''}
+             ${prefs.libDirty?'<br>One change is still waiting to go up — it will as soon as there is signal.':''}`
+          : 'Fill the two boxes below.'}</div>
+      </div>
+      <span class="tag ${Cloud.on?'tag-sync':''}">${Cloud.on?'● on':'off'}</span>
+    </div>
     <div class="set-row" style="display:block">
-      <div class="set-note" style="margin-bottom:10px">
-        Paste the Worker address and the studio key. ${inCloud?`<strong>${inCloud}</strong> take${inCloud===1?'':'s'} are up there now.`:''}
-      </div>
-      <div class="stack">
-        <input class="field" id="c-url" placeholder="https://studio-store.yourname.workers.dev" value="${esc(prefs.cloudURL||'')}">
-        <input class="field" id="c-key" type="password" placeholder="studio key" value="${esc(prefs.cloudKey||'')}">
-        <div class="row" style="justify-content:flex-end">
-          <button class="btn btn-primary" id="c-save">Save &amp; test</button>
+      <details>
+        <summary style="cursor:pointer;font-size:12.5px;color:var(--muted)">Change the address or key</summary>
+        <div class="stack" style="margin-top:12px">
+          <input class="field" id="c-url" placeholder="https://studio-store.yourname.workers.dev" value="${esc(prefs.cloudURL||CFG.WORKER_URL||'')}">
+          <input class="field" id="c-key" type="password" placeholder="studio key" value="${esc(prefs.cloudKey||CFG.STUDIO_KEY||'')}">
+          <div class="row" style="justify-content:flex-end">
+            <button class="btn btn-primary" id="c-save">Save &amp; test</button>
+          </div>
         </div>
-      </div>
+      </details>
     </div>
     <div class="set-row">
       <div class="set-main">
@@ -1162,13 +1290,14 @@ function renderTakes(){
           <div class="take-sub"><span>${when(t.at)}</span>${t.dur?`<span>${mmss(t.dur)}</span>`:''}<span>${kb(t.size)}</span>
             ${t.cloudPath?'<span class="dot-ok">● in the bucket</span>':(t.saved?'<span>on this device</span>':'<span class="dot-warn">● not saved — download it</span>')}</div>
         </div>
+        ${t.songId?'':`<button class="btn btn-sm" data-book="${t.id}">＋ To songbook</button>`}
         ${t.cloudPath||!Cloud.on?'':`<button class="btn btn-sm" data-up="${t.id}">↑ Upload</button>`}
         <button class="btn btn-sm" data-dl="${t.id}">↓ Download</button>
         <button class="btn btn-sm btn-quiet" data-ren="${t.id}">Rename</button>
         <button class="btn btn-sm btn-quiet btn-danger" data-del="${t.id}">Delete</button>
       </div>`).join('')
-    :`<div class="empty"><h3>No takes yet</h3><p>Pick a song, press the red button, and sing.</p>
-      <div style="margin-top:18px"><button class="btn btn-primary" id="gosing">Go and sing</button></div></div>`}`;
+    :`<div class="empty"><h3>No takes yet</h3><p>Press the red button and sing — a song isn't needed to start.</p>
+      <div style="margin-top:18px"><button class="btn btn-primary" id="gosing">♬ Go and sing</button></div></div>`}`;
   const g=$('#gosing');if(g)g.onclick=()=>go('stage');
 
   view.querySelectorAll('[data-play]').forEach(b=>b.onclick=async()=>{
@@ -1181,6 +1310,10 @@ function renderTakes(){
       const a=new Audio(url);await a.play();b.textContent='❚❚';nowPlaying={a,b};
       a.onended=()=>{b.textContent='▶';nowPlaying=null;};
     }catch(e){b.textContent='▶';cloudErr=friendly(e);toast('Could not load that one');}
+  });
+  view.querySelectorAll('[data-book]').forEach(b=>b.onclick=()=>{
+    const t=takes.find(x=>x.id===b.dataset.book);
+    editor(null,{title:t.title.replace(/ — take \d+$/,'').replace(/^Riyaz$/,''),linkTake:t});
   });
   view.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>cloudUp(takes.find(x=>x.id===b.dataset.up)));
   view.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
