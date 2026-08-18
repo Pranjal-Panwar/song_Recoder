@@ -1,20 +1,4 @@
-/* worker.js — the small piece of server that keeps the Backblaze key
-   out of the page. Cloudflare Workers free plan, no card needed.
 
-   Secrets to set in the Worker (Settings → Variables → Add secret):
-     B2_KEY_ID       application key id
-     B2_APP_KEY      application key
-     B2_BUCKET_ID    the bucket's id
-     B2_BUCKET_NAME  the bucket's name
-     STUDIO_KEY      any long random string; the app sends it back
-     ALLOW_ORIGIN    e.g. https://yourname.github.io   (exact, no slash)
-
-   Routes (all need the X-Studio-Key header):
-     POST /upload   body = audio bytes, header X-File-Name
-     GET  /list     → { files: [{ fileName, fileId, contentLength, uploadTimestamp }] }
-     GET  /file?name=…            → streams the audio, Range supported
-     POST /delete   body = { fileName, fileId }
-*/
 
 let cachedAuth = { at: 0 };
 
