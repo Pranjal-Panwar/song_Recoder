@@ -1,7 +1,7 @@
 /* sw.js — makes the studio installable and openable with no signal.
    Bump SHELL when you change index.html so old copies get replaced. */
 
-const SHELL = 'studio-v1';
+const SHELL = 'studio-v2';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -24,7 +24,8 @@ self.addEventListener('fetch', e => {
 
   /* never cache: the lyrics API, the storage worker, recordings */
   if (url.hostname.includes('lrclib.net') || url.pathname.startsWith('/upload') ||
-      url.pathname.startsWith('/file')   || url.pathname.startsWith('/list')) return;
+      url.pathname.startsWith('/file')   || url.pathname.startsWith('/list') ||
+      url.pathname.startsWith('/delete')) return;
 
   /* the page itself: fresh if possible, cached if offline */
   if (req.mode === 'navigate' || url.pathname.endsWith('.html')) {
