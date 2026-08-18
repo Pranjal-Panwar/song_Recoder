@@ -295,6 +295,10 @@ const CFG = {
   WORKER_URL: 'https://studio-store.panwarpranjal2610.workers.dev',
   STUDIO_KEY: 'c1dc335251b4e7534af548cebade8595be0811d8276d64f1'
 };
+/* shown at the bottom of Settings, so it is obvious which copy of the
+   file a phone is actually running */
+const BUILD='build 3 · auto-connect';
+console.log('Swati studio —',BUILD,'| storage:',CFG.WORKER_URL||'(none set)');
 
 /* ── settings + song list ──
    Written twice on purpose: once to localStorage (fast) and once to
@@ -1246,7 +1250,8 @@ async function openSettings(){
       </div>
       <button class="btn" id="s-sync">${syncing?'<span class="spin"></span>':'↻ Sync now'}</button>
     </div>`:''}
-    <div class="row" style="justify-content:flex-end;margin-top:22px">
+    <div class="row" style="justify-content:space-between;align-items:center;margin-top:22px">
+      <span style="font-size:11px;color:var(--muted);letter-spacing:.06em">${BUILD}</span>
       <button class="btn btn-primary" id="s-close">Done</button>
     </div>
   </div>`;
