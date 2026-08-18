@@ -4,10 +4,14 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Swati's Little Studio</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#FBEFE8">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Studio">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700&family=Karla:wght@400;500;700&family=Tiro+Devanagari+Hindi:ital@0;1&display=swap" rel="stylesheet">
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* ── two moods: morning riyaz (default) and evening lamp ── */
 :root{
@@ -190,7 +194,7 @@ kbd{background:var(--card2);border:1px solid var(--line);border-radius:6px;paddi
 .switch input:checked{background:var(--accent)}
 .switch input:checked::after{transform:translateX(18px)}
 
-/* takes + drive */
+/* takes */
 .take{display:flex;align-items:center;gap:14px;padding:15px 17px;border:1px solid var(--line);border-radius:22px;
   background:var(--card);margin-bottom:12px;flex-wrap:wrap;box-shadow:var(--shadow);transition:.18s}
 .take:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift)}
@@ -201,6 +205,7 @@ kbd{background:var(--card2);border:1px solid var(--line);border-radius:6px;paddi
 .take-name{font-family:var(--display);font-size:17px;font-weight:500}
 .take-sub{font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
 .dot-ok{color:var(--leaf);font-weight:700}
+.dot-warn{color:var(--gold);font-weight:700}
 
 /* overlays */
 .veil{position:fixed;inset:0;background:var(--veil);z-index:50;display:grid;place-items:center;padding:20px;backdrop-filter:blur(4px)}
@@ -276,31 +281,22 @@ kbd{background:var(--card2);border:1px solid var(--line);border-radius:6px;paddi
 
 <script>
 /* ══════════════════════════════════════════════════════════
-   SETTINGS — change these if anything moves
+   WHERE THINGS ARE KEPT
+
+   1. Every recording goes into IndexedDB on this device. No
+      account, no size ceiling worth worrying about, survives
+      closing the browser. This works out of the box.
+
+   2. Optionally, a copy goes to a Backblaze B2 bucket through
+      a Cloudflare Worker. Fill the two values below, or paste
+      them into Settings on the phone itself — either works.
    ══════════════════════════════════════════════════════════ */
 const CFG = {
-  CLIENT_ID : '515195793655-7es3o4fl771lbslmdvv2gmg6mnsuc1am.apps.googleusercontent.com',
-
-  /* The folder in Swati's Drive. */
-  FOLDER_ID : '1KcfFLOCPqfB6L2DJbwAX0jd5oaGlJ7mp',
-  FOLDER_URL: 'https://drive.google.com/drive/folders/1KcfFLOCPqfB6L2DJbwAX0jd5oaGlJ7mp?usp=drive_link',
-  FOLDER_NAME: 'paaji_songs_audio',
-
-  /* true  → save into the folder above, the one you made by hand.
-             Needs full Drive access: the limited scope can only reach
-             folders this app created itself, so it cannot see yours.
-     false → the app makes its own folder called FOLDER_NAME and never
-             touches anything else in Drive. Safer, but a different folder. */
-  USE_MY_FOLDER: true
+  WORKER_URL: '',    // e.g. https://studio-store.yourname.workers.dev
+  STUDIO_KEY: ''     // the same STUDIO_KEY secret you set on the Worker
 };
-CFG.SCOPE = CFG.USE_MY_FOLDER
-  ? 'https://www.googleapis.com/auth/drive'        // any folder, including yours
-  : 'https://www.googleapis.com/auth/drive.file';  // only what this app creates
-CFG.FALLBACK_FOLDER = CFG.FOLDER_NAME;
 
-/* ══════════════════════════════════════════════════════════
-   storage — Claude artifact (window.storage) or plain page (localStorage)
-   ══════════════════════════════════════════════════════════ */
+/* ── settings + song list: small JSON, stays in this browser ── */
 const Store = {
   widget: !!(typeof window!=='undefined' && window.storage && window.storage.get),
   async get(k){ if(this.widget){ try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch(e){return null;} }
@@ -311,10 +307,71 @@ const Store = {
   async del(k){ if(this.widget){ try{await window.storage.delete(k);}catch(e){} return; }
                 try{localStorage.removeItem(k);}catch(e){} }
 };
-const K={songs:'swati:songs',takes:'swati:takes',prefs:'swati:prefs',folder:'swati:folder',blob:id=>'swati:blob:'+id};
-const MAX_SAVE=3.4*1024*1024;
+const K={songs:'swati:songs',takes:'swati:takes',prefs:'swati:prefs'};
 
-let songs=[],takes=[],prefs={size:34,speed:34,autoUpload:true,offset:0},room='songbook',currentId=null,toastTimer=null;
+/* ── the audio itself: IndexedDB, blobs stored as they are ── */
+const Vault = {
+  db:null,
+  async open(){
+    if(this.db) return this.db;
+    this.db = await new Promise((res,rej)=>{
+      const r=indexedDB.open('swati-studio',1);
+      r.onupgradeneeded=()=>r.result.createObjectStore('audio');
+      r.onsuccess=()=>res(r.result);
+      r.onerror=()=>rej(r.error);
+    });
+    return this.db;
+  },
+  async tx(mode,fn){
+    const db=await this.open();
+    return new Promise((res,rej)=>{
+      const t=db.transaction('audio',mode);
+      const q=fn(t.objectStore('audio'));
+      q.onsuccess=()=>res(q.result);
+      q.onerror=()=>rej(q.error);
+    });
+  },
+  put(id,blob){ return this.tx('readwrite',s=>s.put(blob,id)); },
+  get(id){      return this.tx('readonly', s=>s.get(id)); },
+  del(id){      return this.tx('readwrite',s=>s.delete(id)); },
+  async keep(){ try{ if(navigator.storage?.persist) await navigator.storage.persist(); }catch(e){} },
+  async used(){ try{ return await navigator.storage.estimate(); }catch(e){ return null; } }
+};
+
+/* ── the bucket, reached through the Worker ── */
+const LIB_PATH='library/songbook.json';
+const Cloud = {
+  get URL(){ return String(prefs.cloudURL||CFG.WORKER_URL||'').replace(/\/+$/,''); },
+  get KEY(){ return prefs.cloudKey||CFG.STUDIO_KEY||''; },
+  get on(){ return !!(this.URL&&this.KEY); },
+  head(extra={}){ return {'X-Studio-Key':this.KEY,...extra}; },
+  async up(name,blob){
+    const r=await fetch(this.URL+'/upload',{method:'POST',
+      headers:this.head({'X-File-Name':encodeURIComponent(name),'Content-Type':blob.type||'audio/webm'}),
+      body:blob});
+    if(!r.ok) throw new Error(await r.text());
+    return r.json();
+  },
+  async list(){
+    const r=await fetch(this.URL+'/list',{headers:this.head()});
+    if(!r.ok) throw new Error(await r.text());
+    return (await r.json()).files||[];
+  },
+  async down(name){
+    const r=await fetch(this.URL+'/file?name='+encodeURIComponent(name),{headers:this.head()});
+    if(!r.ok) throw new Error(await r.text());
+    return r.blob();
+  },
+  async del(fileName,fileId){
+    const r=await fetch(this.URL+'/delete',{method:'POST',
+      headers:this.head({'Content-Type':'application/json'}),
+      body:JSON.stringify({fileName,fileId})});
+    if(!r.ok) throw new Error(await r.text());
+  }
+};
+
+let songs=[],takes=[],prefs={size:34,speed:34,autoUpload:true,offset:0,cloudURL:'',cloudKey:''},
+    room='songbook',currentId=null,toastTimer=null,cloudErr=null,syncing=false;
 
 const $=s=>document.querySelector(s);
 const view=$('#view');
@@ -323,20 +380,26 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const mmss=s=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
 const kb=b=>!b?'—':(b<1048576?Math.round(b/1024)+' KB':(b/1048576).toFixed(1)+' MB');
 const when=t=>new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short'})+' · '+new Date(t).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
-const safe=n=>n.replace(/[\\/:*?"<>|]/g,'-');
+const safe=n=>String(n).replace(/[\\/:*?"<>|#]/g,'-').replace(/\s+/g,' ').trim();
 
 function toast(msg){
   document.querySelector('.toast')?.remove();
   const el=document.createElement('div');el.className='toast';el.textContent=msg;el.setAttribute('role','status');
   document.body.appendChild(el);clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.remove(),3600);
 }
+function friendly(e){
+  const raw=String(e&&e.message||e);
+  console.warn('[store]',raw);
+  if(/not allowed|401/.test(raw))            return 'The studio key does not match the one on the Worker.';
+  if(/Failed to fetch|NetworkError/i.test(raw)) return 'Could not reach your storage. Check the address, the connection, and that the Worker allows this site.';
+  if(/b2 auth/i.test(raw))                   return 'The Worker could not sign in to Backblaze. Check the key id and application key.';
+  if(/no such route|404/.test(raw))          return 'That address does not look like the storage Worker.';
+  if(/cap exceeded|storage cap/i.test(raw))  return 'The Backblaze account has hit its cap.';
+  return 'Storage could not finish that. Try again in a moment.';
+}
 
 /* ══════════════════════════════════════════════════════════
-   हौसला — carried in the file, not fetched.
-   There is no lyrics-quality API for Hindi women's-empowerment
-   quotes; the English ones go down and would need machine
-   translation. Local means instant, offline, and correct.
-   Add your own lines here any time — same shape.
+   हौसला — carried in the file, not fetched
    ══════════════════════════════════════════════════════════ */
 const HAUSLA=[
   {q:'आवाज़ ऊँची करने के लिए किसी की इजाज़त नहीं चाहिए।'},
@@ -363,8 +426,6 @@ const HAUSLA=[
    a:'कल्पना चावला',n:'अनुवाद'},
   {q:'बंद मुट्ठी से कोई हाथ नहीं मिला सकता।',a:'इंदिरा गांधी',n:'अनुवाद'},
   {q:'जाओ, शिक्षा पाओ — आत्मनिर्भर बनो, मेहनती बनो।',a:'सावित्रीबाई फुले',n:"कविता 'जा, शिक्षा घे' से, अनुवाद"},
-
-  /* शिव और शक्ति — the tradition's own case for the feminine */
   {q:'शिव भी शक्ति के बिना अधूरे हैं। यही सबसे पुरानी सीख है।',a:'सौंदर्यलहरी',n:'पहले श्लोक का भाव'},
   {q:'अर्धनारीश्वर — आधे शिव, आधी शक्ति। बराबरी की सबसे पुरानी तस्वीर।'},
   {q:'सती ने अपना वर खुद चुना था — पिता की मर्ज़ी के खिलाफ़।'},
@@ -374,7 +435,6 @@ const HAUSLA=[
   {q:'जहाँ नाद है, वहाँ शिव हैं। गाना भी एक साधना है।'},
   {q:'पार्वती ने बरसों तप किया, जो चाहिए था उसके लिए। ज़िद भी एक साधना है।'}
 ];
-/* fresh line every visit, and a new one every five minutes */
 let hauslaIdx=Math.floor(Math.random()*HAUSLA.length);
 const ROTATE_MS=5*60*1000;
 function nextHausla(){
@@ -383,7 +443,6 @@ function nextHausla(){
   hauslaIdx=n;
 }
 const shortHausla=()=>{const s=HAUSLA.filter(h=>!h.a&&h.q.length<58);return s[Math.floor(Math.random()*s.length)].q;};
-
 function hauslaInner(){
   const h=HAUSLA[hauslaIdx];
   return `<div class="hausla-q" lang="hi">${esc(h.q)}</div>`+
@@ -396,7 +455,6 @@ function hauslaBlock(){
     <button class="hausla-new" id="hnew" aria-label="एक और">↻</button>
   </div>`;
 }
-/* swap the words without redrawing the page */
 function paintHausla(){
   const box=document.querySelector('#hbody');
   if(!box)return;
@@ -405,9 +463,7 @@ function paintHausla(){
 }
 setInterval(()=>{nextHausla();paintHausla();},ROTATE_MS);
 
-/* ══════════════════════════════════════════════════════════
-   LRC — time-synced lyric parsing
-   ══════════════════════════════════════════════════════════ */
+/* ── LRC parsing ── */
 function parseLRC(lrc){
   if(!lrc) return null;
   const out=[];
@@ -427,7 +483,6 @@ function parseLRC(lrc){
 /* ══════════════════════════════════════════════════════════
    boot
    ══════════════════════════════════════════════════════════ */
-/* नमस्ते — changes with the hour */
 function paintGreet(){
   const h=new Date().getHours();
   const line = h<4  ? 'शुभ रात्रि — देर तक जाग रही हो?'
@@ -446,13 +501,14 @@ function applyTheme(){
   songs=await Store.get(K.songs)||[];
   takes=await Store.get(K.takes)||[];
   prefs=Object.assign(prefs,await Store.get(K.prefs)||{});
-  driveFolder=await Store.get(K.folder)||null;
-  /* if the access mode changed, the old permission and folder no longer apply */
-  if(prefs.driveScope && prefs.driveScope!==CFG.SCOPE){
-    driveFolder=null; await Store.del(K.folder);
-    prefs.driveLinked=false; await Store.set(K.prefs,prefs);
+
+  Vault.keep();
+  /* hand every take back its audio, if this device still has it */
+  for(const t of takes){
+    if(t.url) continue;
+    try{ const b=await Vault.get(t.id); if(b){ t.url=URL.createObjectURL(b); t.saved=true; } }catch(e){}
   }
-  for(const t of takes){ if(t.saved&&!t.url){ const d=await Store.get(K.blob(t.id)); if(d) t.url=d; } }
+
   applyTheme(); paintGreet(); setInterval(paintGreet,60000);
   $('#theme').onclick=async()=>{
     prefs.theme = prefs.theme==='evening' ? 'day' : 'evening';
@@ -461,7 +517,11 @@ function applyTheme(){
   $('#settings').onclick=()=>openSettings();
   document.querySelectorAll('.room-btn').forEach(b=>b.onclick=()=>go(b.dataset.room));
   render();
-  autoConnect();
+
+  if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  }
+  if(Cloud.on) syncCloud(false);
 })();
 
 function go(r){
@@ -521,7 +581,6 @@ function renderSongbook(){
   view.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>removeSong(b.dataset.remove));
 }
 
-/* one place that removes a song, used by the card and the editor */
 async function removeSong(id){
   const s=songs.find(x=>x.id===id); if(!s) return;
   const n=takes.filter(t=>t.songId===id).length;
@@ -534,7 +593,7 @@ async function removeSong(id){
   toast(`"${s.title}" removed`);
 }
 
-/* ── find lyrics online (LRCLIB — open, no key, crowdsourced) ── */
+/* ── find lyrics online (LRCLIB — open, no key) ── */
 function lyricFinder(){
   const veil=document.createElement('div');veil.className='veil';
   veil.innerHTML=`<div class="sheet" role="dialog" aria-modal="true">
@@ -581,7 +640,7 @@ function lyricFinder(){
         const synced=parseLRC(h.syncedLyrics);
         const song={id:uid(),title:h.trackName,artist:h.artistName,
           lyrics:h.plainLyrics||(synced?synced.map(l=>l.text).join('\n'):''),
-          synced,duration:h.duration||0,createdAt:Date.now()};
+          synced,duration:h.duration||0,createdAt:Date.now(),updated:Date.now()};
         songs.unshift(song); await saveSongs();
         currentId=song.id; close(); room='stage'; render();
         toast(synced?'Added — the lyrics will follow the music':'Added to your songbook');
@@ -619,8 +678,8 @@ function editor(id){
     const title=$('#f-title').value.trim(),artist=$('#f-artist').value.trim(),lyrics=$('#f-lyrics').value;
     if(!title){toast('Give the song a name');return;}
     if(!lyrics.trim()){toast('The lyrics can\'t be empty');return;}
-    if(s)Object.assign(s,{title,artist,lyrics});
-    else{const n={id:uid(),title,artist,lyrics,synced:null,createdAt:Date.now()};songs.unshift(n);currentId=n.id;}
+    if(s)Object.assign(s,{title,artist,lyrics,updated:Date.now()});
+    else{const n={id:uid(),title,artist,lyrics,synced:null,createdAt:Date.now(),updated:Date.now()};songs.unshift(n);currentId=n.id;}
     await saveSongs();close();render();toast(s?'Saved':'Added to your songbook');
   };
 }
@@ -740,7 +799,6 @@ function relight(){
   if(best&&bestD<reach*0.55)best.classList.add('is-lit');
 }
 
-/* constant-speed scroll (songs with no timings) */
 function startScroll(){
   const sc=$('#scroller');if(!sc)return;
   scrolling=true;lastTS=0;const b=$('#roll');if(b)b.textContent='❚❚ Pause';
@@ -755,7 +813,6 @@ function startScroll(){
 }
 function stopScroll(){scrolling=false;if(scrollRAF)cancelAnimationFrame(scrollRAF);scrollRAF=null;const b=$('#roll');if(b)b.textContent='▶ Scroll';}
 
-/* timed follow (songs with LRC timings) */
 function startFollow(){
   following=true;let lastIdx=-1;
   const tick=()=>{
@@ -890,277 +947,164 @@ async function finishRec(){
   const n=takes.filter(t=>t.songId===currentId).length+1;
   const take={id:uid(),songId:currentId,title:`${song.title} — take ${n}`,at:Date.now(),
     dur:Math.round(dur),size:blob.size,mime:blob.type,
-    ext:(blob.type.includes('mp4')?'m4a':'webm'),url:URL.createObjectURL(blob),saved:false,driveId:null};
-  if(blob.size<=MAX_SAVE){
-    const data=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob);});
-    if(await Store.set(K.blob(take.id),data)){take.saved=true;take.url=data;}
-  }
+    ext:(blob.type.includes('mp4')?'m4a':'webm'),url:URL.createObjectURL(blob),
+    saved:false,cloudPath:null,cloudFileId:null};
+
+  /* on the device first — this is the copy that never depends on a service */
+  try{ await Vault.put(take.id,blob); take.saved=true; }
+  catch(e){ console.warn('vault',e); take.saved=false; }
+
   takes.unshift(take);
   await persistTakes();
   room='takes';render();
-  if(prefs.autoUpload&&driveToken()) uploadTake(take,true);
-  else toast(take.saved?'Take saved':'Take ready — download it to keep it');
+
+  if(prefs.autoUpload&&Cloud.on) cloudUp(take,true);
+  else if(take.saved) toast('Take saved on this device');
+  else toast('Take ready — download it to keep it');
 }
 const persistTakes=()=>Store.set(K.takes,takes.map(({url,...r})=>r));
 
 /* ══════════════════════════════════════════════════════════
-   Google Drive
+   the bucket
    ══════════════════════════════════════════════════════════ */
-let tokenClient=null,accessToken=null,tokenExp=0,driveFolder=null,driveErr=null;
-const driveToken=()=>accessToken&&Date.now()<tokenExp?accessToken:null;
-
-function gisReady(){return !!(window.google&&google.accounts&&google.accounts.oauth2);}
-
-function connectDrive(interactive=true){
-  return new Promise((res,rej)=>{
-    if(!gisReady()){rej(new Error('gis'));return;}
-    if(!tokenClient){
-      tokenClient=google.accounts.oauth2.initTokenClient({
-        client_id:CFG.CLIENT_ID,scope:CFG.SCOPE,
-        callback:t=>{
-          if(t.error){rej(new Error(t.error));return;}
-          accessToken=t.access_token;tokenExp=Date.now()+(t.expires_in-90)*1000;res(accessToken);
-        },
-        error_callback:e=>rej(new Error(e.type||'popup'))
-      });
-    }
-    tokenClient.callback=t=>{
-      if(t.error){rej(new Error(t.error));return;}
-      accessToken=t.access_token;tokenExp=Date.now()+((t.expires_in||3600)-90)*1000;res(accessToken);
-    };
-    tokenClient.requestAccessToken({prompt:interactive?'':'none'});
-  });
-}
-async function needToken(){ return driveToken()||await connectDrive(true); }
-
-async function api(path,opts={}){
-  const t=await needToken();
-  const r=await fetch(path,{...opts,headers:{Authorization:'Bearer '+t,...(opts.headers||{})}});
-  if(!r.ok){ const txt=await r.text(); const e=new Error(txt); e.status=r.status; throw e; }
-  return r;
-}
-
-/* Drive query values are single-quoted, so any apostrophe inside one
-   (as in "Swati's Studio") must be escaped or the whole query is rejected. */
-const dq=s=>String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-
-/* find a folder we're allowed to write into */
-async function resolveFolder(){
-  if(driveFolder)return driveFolder;
+async function cloudUp(take,quiet=false){
+  if(!Cloud.on){ toast('Set up storage in Settings first'); return; }
+  let blob=null;
+  try{ blob=await Vault.get(take.id); }catch(e){}
+  if(!blob&&take.url){ try{ blob=await (await fetch(take.url)).blob(); }catch(e){} }
+  if(!blob){ toast('That audio is no longer on this device'); return; }
+  const path=`takes/${safe(take.title)}-${take.id}.${take.ext}`;
   try{
-    const r=await api(`https://www.googleapis.com/drive/v3/files/${CFG.FOLDER_ID}?fields=id,name`);
-    const f=await r.json();
-    driveFolder={id:f.id,name:f.name,configured:true};
+    if(!quiet) toast('Uploading…');
+    const r=await Cloud.up(path,blob);
+    take.cloudPath=r.fileName||path;
+    take.cloudFileId=r.fileId||null;
+    cloudErr=null;
+    await persistTakes();
+    toast('Saved to your bucket');
+    if(room==='takes') renderTakes();
   }catch(e){
-    // drive.file can't reach a folder it didn't make — use our own instead
-    let found=null;
-    try{
-      const q=encodeURIComponent(`name='${dq(CFG.FALLBACK_FOLDER)}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
-      const r=await api(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`);
-      const {files}=await r.json();
-      if(files&&files.length) found=files[0];
-    }catch(e2){ /* couldn't look it up — just make a fresh one below */ }
-    if(found) driveFolder={id:found.id,name:found.name,configured:false};
-    else{
-      const c=await api('https://www.googleapis.com/drive/v3/files?fields=id,name',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({name:CFG.FALLBACK_FOLDER,mimeType:'application/vnd.google-apps.folder'})});
-      const f=await c.json();driveFolder={id:f.id,name:f.name,configured:false};
-    }
+    cloudErr=friendly(e);
+    toast('Could not upload — the take is still on this device');
   }
-  driveFolder.forScope=CFG.SCOPE;
-  await Store.set(K.folder,driveFolder);
-  return driveFolder;
 }
 
-/* ── the songbook lives in Drive, so every device shows the same shelf ── */
-const LIB_NAME='swati-studio-library.json';
-let libId=null,pushTimer=null,syncing=false,renewTimer=null,lastSync=null;
-
+/* the songbook travels as one small JSON file, so a second device sees it */
+let pushTimer=null;
 async function saveSongs(){ await Store.set(K.songs,songs); queuePush(); }
-const queuePush=()=>{ if(!driveToken())return; clearTimeout(pushTimer); pushTimer=setTimeout(()=>pushLibrary(),2500); };
-
-async function findLib(){
-  if(libId)return libId;
-  const folder=await resolveFolder();
-  const q=encodeURIComponent(`'${dq(folder.id)}' in parents and name='${dq(LIB_NAME)}' and trashed=false`);
-  const r=await api(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`);
-  const {files}=await r.json();
-  libId=files&&files.length?files[0].id:null;
-  return libId;
+function queuePush(){
+  if(!Cloud.on)return;
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(()=>pushLibrary(),2500);
 }
-
-async function pullLibrary(){
-  const id=await findLib(); if(!id)return 0;
-  const r=await api(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`);
-  const cloud=await r.json();
+async function pushLibrary(){
+  if(!Cloud.on)return;
+  try{
+    await Cloud.up(LIB_PATH,new Blob([JSON.stringify({v:1,savedAt:Date.now(),songs})],{type:'application/json'}));
+  }catch(e){ console.warn('library push',e); }
+}
+function mergeSongs(list){
   let added=0;
-  for(const cs of (cloud.songs||[])){
+  for(const cs of list||[]){
     const mine=songs.find(x=>x.id===cs.id);
     if(!mine){ songs.push(cs); added++; }
     else if((cs.updated||0)>(mine.updated||0)) Object.assign(mine,cs);
   }
   songs.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  await Store.set(K.songs, songs);
+  Store.set(K.songs,songs);
   return added;
 }
 
-async function pushLibrary(){
-  if(!driveToken())return;
-  try{
-    const folder=await resolveFolder();
-    const id=await findLib();
-    const fd=new FormData();
-    fd.append('metadata',new Blob([JSON.stringify(id?{name:LIB_NAME}:{name:LIB_NAME,parents:[folder.id]})],{type:'application/json'}));
-    fd.append('file',new Blob([JSON.stringify({v:1,savedAt:Date.now(),songs})],{type:'application/json'}));
-    const url=id?`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=multipart&fields=id`
-                :`https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id`;
-    const r=await api(url,{method:id?'PATCH':'POST',body:fd});
-    libId=(await r.json()).id;
-  }catch(e){ /* try again on the next change */ }
-}
-
-/* every recording already in Drive shows up in My takes, wherever it was made */
-async function mergeCloudTakes(){
-  const folder=await resolveFolder();
-  const q=encodeURIComponent(`'${folder.id}' in parents and trashed=false`);
-  const r=await api(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime desc&fields=files(id,name,size,createdTime,mimeType)&pageSize=300`);
-  const files=(await r.json()).files||[];
-  let added=0;
-  for(const f of files){
-    if(!/^audio\//.test(f.mimeType||''))continue;
-    if(takes.some(t=>t.driveId===f.id))continue;
-    takes.push({id:'d_'+f.id,songId:null,title:f.name.replace(/\.[^.]+$/,''),
-      at:new Date(f.createdTime).getTime(),dur:0,size:+f.size||0,
-      ext:(f.name.split('.').pop()||'webm'),driveId:f.id,cloud:true,saved:false,url:null});
-    added++;
-  }
-  takes.sort((a,b)=>(b.at||0)-(a.at||0));
-  await persistTakes();
-  return added;
-}
-
-async function syncAll(quiet=true){
-  if(syncing||!driveToken())return;
+async function syncCloud(loud=false){
+  if(syncing||!Cloud.on)return;
   syncing=true;
   try{
-    const a=await pullLibrary();
-    const b=await mergeCloudTakes();
+    const files=await Cloud.list();
+    let songsAdded=0,takesAdded=0;
+
+    if(files.some(f=>f.fileName===LIB_PATH)){
+      try{
+        const j=JSON.parse(await (await Cloud.down(LIB_PATH)).text());
+        songsAdded=mergeSongs(j.songs);
+      }catch(e){ console.warn('library pull',e); }
+    }
+
+    for(const f of files){
+      if(!f.fileName.startsWith('takes/'))continue;
+      if(takes.some(t=>t.cloudPath===f.fileName))continue;
+      const base=f.fileName.replace(/^takes\//,'').replace(/\.[^.]+$/,'');
+      takes.push({id:'c_'+(f.fileId||uid()).slice(-14),songId:null,
+        title:base.replace(/-[a-z0-9]{9,}$/,''),
+        at:f.uploadTimestamp||Date.now(),dur:0,size:+f.contentLength||0,
+        ext:(f.fileName.split('.').pop()||'webm'),
+        cloudPath:f.fileName,cloudFileId:f.fileId,saved:false,url:null});
+      takesAdded++;
+    }
+    takes.sort((a,b)=>(b.at||0)-(a.at||0));
+    await persistTakes();
     await pushLibrary();
-    lastSync=Date.now();
-    if(!quiet) toast(`Synced · ${songs.length} songs, ${takes.length} takes`);
-    else if(a||b) toast(`Found ${a?a+' song'+(a>1?'s':''):''}${a&&b?' and ':''}${b?b+' recording'+(b>1?'s':''):''} in Drive`);
+
+    cloudErr=null;
+    prefs.lastSync=Date.now(); await Store.set(K.prefs,prefs);
+    if(loud) toast(`Synced · ${songs.length} songs, ${takes.length} takes`);
+    else if(songsAdded||takesAdded) toast(`Found ${songsAdded?songsAdded+' song'+(songsAdded>1?'s':''):''}${songsAdded&&takesAdded?' and ':''}${takesAdded?takesAdded+' recording'+(takesAdded>1?'s':''):''} in your bucket`);
     if(room==='songbook'||room==='takes') render();
-  }catch(e){ driveErr=describe(e); }
-  finally{ syncing=false; }
-}
-
-/* keep the token alive so a long practice session never breaks */
-function scheduleRenew(){
-  clearTimeout(renewTimer);
-  const ms=Math.max(60000,tokenExp-Date.now()-300000);
-  renewTimer=setTimeout(async()=>{ try{ await connectDrive(false); scheduleRenew(); }catch(e){} },ms);
-}
-
-/* on load: sign back in without asking, if Google still remembers her */
-async function autoConnect(){
-  if(!prefs.driveLinked)return;
-  for(let i=0;i<24&&!gisReady();i++) await new Promise(r=>setTimeout(r,250));
-  if(!gisReady())return;
-  try{ await connectDrive(false); scheduleRenew(); await syncAll(true); }
-  catch(e){ /* she taps Connect once and it's back */ }
-}
-
-async function uploadTake(take,quiet=false){
-  if(!take.url){toast('That audio is no longer here');return;}
-  try{
-    if(!quiet)toast('Uploading to Drive…');
-    const folder=await resolveFolder();
-    const blob=await(await fetch(take.url)).blob();
-    const fd=new FormData();
-    fd.append('metadata',new Blob([JSON.stringify({name:safe(take.title)+'.'+take.ext,parents:[folder.id]})],{type:'application/json'}));
-    fd.append('file',blob);
-    const r=await api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
-      {method:'POST',body:fd});
-    const f=await r.json();
-    take.driveId=f.id;take.driveLink=f.webViewLink;
-    await persistTakes();toast('Saved to Drive · '+folder.name);
-    if(room==='takes')renderTakes();
   }catch(e){
-    driveErr=describe(e);
-    toast('Could not save that to Drive');
-  }
+    cloudErr=friendly(e);
+    if(loud) toast('Could not reach your storage');
+  }finally{ syncing=false; }
 }
 
-function describe(e){
-  const raw=String(e.message||e);
-  let m=raw;
-  try{ const j=JSON.parse(raw); if(j.error&&j.error.message) m=j.error.message; }catch(_){}
-  // the technical detail goes to the browser console, where a developer will look
-  console.warn('[Drive]',raw);
-  if(m.includes('gis'))                       return "Google's sign-in didn't load. Check the connection and try again.";
-  if(m.includes('popup')||m.includes('interaction')) return 'The sign-in window closed before it finished. Try again.';
-  if(m.includes('idpiframe')||m.includes('origin')||m.includes('invalid_client'))
-                                              return "This copy of the app isn't set up for Drive yet.";
-  if(raw.includes('"location": "q"')||raw.includes('"location":"q"'))
-                                              return "Couldn't find the folder in Drive. Reload the page and try again.";
-  if(m.includes('accessNotConfigured')||raw.includes('has not been used'))
-                                              return "Drive isn't switched on for this app yet.";
-  if(m.includes('access_denied'))             return 'Google refused the sign-in. Make sure you picked the right account.';
-  if(m.includes('storageQuotaExceeded'))      return 'That Google account is out of space.';
-  if(m.includes('401')||m.includes('403'))    return 'The connection to Drive expired. Press Connect once more.';
-  return 'Drive could not finish that. Try again in a moment.';
-}
-
-function openSettings(){
+/* ══════════════════════════════════════════════════════════
+   settings
+   ══════════════════════════════════════════════════════════ */
+async function openSettings(){
   document.querySelectorAll('.veil').forEach(v=>v.remove());
-  const signed=!!driveToken();
-  const where = signed
-    ? `Songs and recordings are kept in <strong>${esc(driveFolder?.name||'your folder')}</strong>.`
-      + (driveFolder&&!driveFolder.configured?' <span style="color:var(--live)">This is a folder the app made, not the one you linked.</span>':'')
-      + (lastSync?` Last checked at ${new Date(lastSync).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}.`:'')
-    : 'Connect once and everything is saved for you — ready on any device you sing from.';
+  const est=await Vault.used();
+  const onDevice=takes.filter(t=>t.saved).length;
+  const inCloud=takes.filter(t=>t.cloudPath).length;
 
   const veil=document.createElement('div');veil.className='veil';
   veil.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-label="Settings">
     <h2>Settings</h2>
     <p class="sub">Where your singing is kept.</p>
-    ${driveErr?`<div class="notice">${esc(driveErr)}</div>`:''}
-    <div class="tool-label">Google Drive</div>
+    ${cloudErr?`<div class="notice">${esc(cloudErr)}</div>`:''}
+
+    <div class="tool-label">On this device</div>
     <div class="set-row">
       <div class="set-main">
-        <div class="set-title">${signed?'Connected':(prefs.driveLinked?'Reconnecting…':'Not connected')}</div>
-        <div class="set-note">${where}</div>
+        <div class="set-title">${onDevice} take${onDevice===1?'':'s'} stored here</div>
+        <div class="set-note">Kept in this browser, no account needed.${est?` Using about <strong>${kb(est.usage)}</strong> of the ${kb(est.quota)} this browser allows.`:''}
+        <br>Add the app to your home screen — that's what stops the phone clearing them.</div>
       </div>
-      <button class="btn ${signed?'':'btn-primary'}" id="s-conn">${signed?'Reconnect':'Connect'}</button>
+    </div>
+
+    <div class="tool-label" style="margin-top:20px">Backblaze bucket</div>
+    <div class="set-row" style="display:block">
+      <div class="set-note" style="margin-bottom:10px">
+        Paste the Worker address and the studio key. ${inCloud?`<strong>${inCloud}</strong> take${inCloud===1?'':'s'} are up there now.`:''}
+      </div>
+      <div class="stack">
+        <input class="field" id="c-url" placeholder="https://studio-store.yourname.workers.dev" value="${esc(prefs.cloudURL||'')}">
+        <input class="field" id="c-key" type="password" placeholder="studio key" value="${esc(prefs.cloudKey||'')}">
+        <div class="row" style="justify-content:flex-end">
+          <button class="btn btn-primary" id="c-save">Save &amp; test</button>
+        </div>
+      </div>
     </div>
     <div class="set-row">
       <div class="set-main">
-        <div class="set-title">Save every take</div>
-        <div class="set-note">New recordings go to Drive on their own.</div>
+        <div class="set-title">Upload every take</div>
+        <div class="set-note">New recordings go up on their own, right after you stop singing.</div>
       </div>
-      <label class="switch"><input type="checkbox" id="s-auto" ${prefs.autoUpload?'checked':''} aria-label="Save every take"></label>
+      <label class="switch"><input type="checkbox" id="s-auto" ${prefs.autoUpload?'checked':''} aria-label="Upload every take"></label>
     </div>
-    ${signed?`<div class="set-row">
+    ${Cloud.on?`<div class="set-row">
       <div class="set-main">
-        <div class="set-title">Check for new songs</div>
-        <div class="set-note">Pulls in anything recorded on another device.</div>
+        <div class="set-title">Check the bucket</div>
+        <div class="set-note">Pulls in songs and takes made on another device.${prefs.lastSync?` Last checked at ${new Date(prefs.lastSync).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}.`:''}</div>
       </div>
       <button class="btn" id="s-sync">${syncing?'<span class="spin"></span>':'↻ Sync now'}</button>
-    </div>`:''}
-    <div class="set-row">
-      <div class="set-main">
-        <div class="set-title">The folder itself</div>
-        <div class="set-note">Opens Google Drive in a new tab.</div>
-      </div>
-      <a class="btn" href="${CFG.FOLDER_URL}" target="_blank" rel="noopener">Open ↗</a>
-    </div>
-    ${prefs.driveLinked?`<div class="set-row">
-      <div class="set-main">
-        <div class="set-title">Connect automatically</div>
-        <div class="set-note">Turning this off keeps everything already in Drive.</div>
-      </div>
-      <button class="btn btn-quiet" id="s-unlink">Turn off</button>
     </div>`:''}
     <div class="row" style="justify-content:flex-end;margin-top:22px">
       <button class="btn btn-primary" id="s-close">Done</button>
@@ -1169,55 +1113,56 @@ function openSettings(){
   document.body.appendChild(veil);
   const close=()=>veil.remove();
   veil.onclick=e=>{if(e.target===veil)close();};
-  document.querySelector('#s-close').onclick=close;
-  document.querySelector('#s-auto').onchange=async e=>{
+  $('#s-close').onclick=close;
+  $('#s-auto').onchange=async e=>{
     prefs.autoUpload=e.target.checked; await Store.set(K.prefs,prefs);
-    toast(prefs.autoUpload?'Takes will save on their own':'Saving to Drive is manual now');
+    toast(prefs.autoUpload?'Takes will upload on their own':'Uploading is manual now');
   };
-  document.querySelector('#s-conn').onclick=async()=>{
-    driveErr=null;
+  $('#c-save').onclick=async()=>{
+    prefs.cloudURL=$('#c-url').value.trim();
+    prefs.cloudKey=$('#c-key').value.trim();
+    await Store.set(K.prefs,prefs);
+    cloudErr=null;
+    if(!Cloud.on){ toast('Both boxes are needed'); return; }
+    const btn=$('#c-save'); btn.innerHTML='<span class="spin"></span>'; btn.disabled=true;
     try{
-      await connectDrive(true); await resolveFolder();
-      prefs.driveLinked=true; prefs.driveScope=CFG.SCOPE; await Store.set(K.prefs,prefs);
-      scheduleRenew(); openSettings(); toast('Drive connected');
-      await syncAll(false);
-    }catch(e){ driveErr=describe(e); openSettings(); }
+      await Cloud.list();
+      toast('Storage connected');
+      await syncCloud(true);
+    }catch(e){ cloudErr=friendly(e); }
+    openSettings();
   };
-  const sy=document.querySelector('#s-sync');
-  if(sy) sy.onclick=async()=>{ await syncAll(false); openSettings(); };
-  const un=document.querySelector('#s-unlink');
-  if(un) un.onclick=async()=>{
-    if(!confirm('Stop connecting to Drive automatically?\n\nNothing in Drive is deleted.'))return;
-    prefs.driveLinked=false; await Store.set(K.prefs,prefs);
-    accessToken=null; tokenExp=0; clearTimeout(renewTimer);
-    openSettings(); toast('Automatic connecting is off');
-  };
+  const sy=$('#s-sync');
+  if(sy) sy.onclick=async()=>{ await syncCloud(true); openSettings(); };
 }
 
 /* ══════════════════════════════════════════════════════════
    takes
    ══════════════════════════════════════════════════════════ */
-/* audio may be here, or only in Drive — fetch it either way */
 async function takeURL(t){
   if(t.url)return t.url;
-  if(!t.driveId)return null;
-  const r=await api(`https://www.googleapis.com/drive/v3/files/${t.driveId}?alt=media`);
-  t.url=URL.createObjectURL(await r.blob());
-  return t.url;
+  try{ const b=await Vault.get(t.id); if(b) return (t.url=URL.createObjectURL(b)); }catch(e){}
+  if(t.cloudPath&&Cloud.on){
+    const b=await Cloud.down(t.cloudPath);
+    try{ await Vault.put(t.id,b); t.saved=true; }catch(e){}
+    return (t.url=URL.createObjectURL(b));
+  }
+  return null;
 }
 
 let nowPlaying=null;
 function renderTakes(){
   view.innerHTML=`
+    ${!Cloud.on&&takes.length?`<div class="notice">These takes live in this browser only. Open Settings to send copies to your bucket.</div>`:''}
     ${takes.length?takes.map(t=>`
       <div class="take">
         <button class="take-play" data-play="${t.id}" aria-label="Play ${esc(t.title)}">▶</button>
         <div class="take-info">
           <div class="take-name">${esc(t.title)}</div>
           <div class="take-sub"><span>${when(t.at)}</span>${t.dur?`<span>${mmss(t.dur)}</span>`:''}<span>${kb(t.size)}</span>
-            ${t.driveId?'<span class="dot-ok">● in Drive</span>':(t.saved?'':'<span>not saved — download it</span>')}</div>
+            ${t.cloudPath?'<span class="dot-ok">● in the bucket</span>':(t.saved?'<span>on this device</span>':'<span class="dot-warn">● not saved — download it</span>')}</div>
         </div>
-        ${t.driveId?'':`<button class="btn btn-sm" data-up="${t.id}">↑ To Drive</button>`}
+        ${t.cloudPath||!Cloud.on?'':`<button class="btn btn-sm" data-up="${t.id}">↑ Upload</button>`}
         <button class="btn btn-sm" data-dl="${t.id}">↓ Download</button>
         <button class="btn btn-sm btn-quiet" data-ren="${t.id}">Rename</button>
         <button class="btn btn-sm btn-quiet btn-danger" data-del="${t.id}">Delete</button>
@@ -1232,12 +1177,12 @@ function renderTakes(){
     b.innerHTML='<span class="spin"></span>';
     try{
       const url=await takeURL(t);
-      if(!url){b.textContent='▶';toast('That audio is gone — it lived in this browser only');return;}
-      const a=new Audio(url);a.play();b.textContent='❚❚';nowPlaying={a,b};
+      if(!url){b.textContent='▶';toast('That audio is gone — it was never uploaded');return;}
+      const a=new Audio(url);await a.play();b.textContent='❚❚';nowPlaying={a,b};
       a.onended=()=>{b.textContent='▶';nowPlaying=null;};
-    }catch(e){b.textContent='▶';toast('Could not load that one from Drive');}
+    }catch(e){b.textContent='▶';cloudErr=friendly(e);toast('Could not load that one');}
   });
-  view.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>uploadTake(takes.find(x=>x.id===b.dataset.up)));
+  view.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>cloudUp(takes.find(x=>x.id===b.dataset.up)));
   view.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
     const t=takes.find(x=>x.id===b.dataset.dl);
     try{
@@ -1245,27 +1190,23 @@ function renderTakes(){
       if(!url){toast('That audio is no longer here');return;}
       const a=document.createElement('a');a.href=url;a.download=safe(t.title)+'.'+t.ext;
       document.body.appendChild(a);a.click();a.remove();toast('Downloaded');
-    }catch(e){toast('Could not fetch that from Drive');}
+    }catch(e){toast('Could not fetch that one');}
   });
   view.querySelectorAll('[data-ren]').forEach(b=>b.onclick=async()=>{
     const t=takes.find(x=>x.id===b.dataset.ren);
     const name=prompt('Name this take',t.title);
     if(!name||!name.trim())return;
-    t.title=name.trim();await persistTakes();
-    if(t.driveId&&driveToken()){
-      try{ await api(`https://www.googleapis.com/drive/v3/files/${t.driveId}`,{method:'PATCH',
-        headers:{'Content-Type':'application/json'},body:JSON.stringify({name:safe(t.title)+'.'+t.ext})}); }catch(e){}
-    }
-    renderTakes();
+    t.title=name.trim();await persistTakes();renderTakes();
+    if(t.cloudPath) toast('Renamed here — the file in the bucket keeps its old name');
   });
   view.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
     const t=takes.find(x=>x.id===b.dataset.del);
-    const inDrive=t.driveId&&driveToken();
-    if(!confirm(`Delete "${t.title}"?${inDrive?'\n\nThe Drive copy goes to the bin, so it can still be recovered there.':"\n\nThis can't be undone."}`))return;
-    if(inDrive){ try{ await api(`https://www.googleapis.com/drive/v3/files/${t.driveId}`,{method:'PATCH',
-      headers:{'Content-Type':'application/json'},body:JSON.stringify({trashed:true})}); }catch(e){} }
+    const up=t.cloudPath&&Cloud.on;
+    if(!confirm(`Delete "${t.title}"?${up?'\n\nThe copy in the bucket goes too.':"\n\nThis can't be undone."}`))return;
+    if(up){ try{ await Cloud.del(t.cloudPath,t.cloudFileId); }catch(e){ cloudErr=friendly(e); toast('Removed here, but the bucket copy stayed'); } }
+    try{ await Vault.del(t.id); }catch(e){}
     takes=takes.filter(x=>x.id!==t.id);
-    await Store.del(K.blob(t.id));await persistTakes();renderTakes();toast('Take deleted');
+    await persistTakes();renderTakes();
   });
 }
 </script>
